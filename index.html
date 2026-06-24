@@ -79,12 +79,15 @@
 
     /* ── Card ── */
     .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 2px solid #e5e7eb; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
-    .card.selected        { border-color: #1e3a5f; box-shadow: 0 0 0 3px rgba(30,58,95,.12); }
-    .card.has-conflict    { border-color: #f59e0b; }
-    .card.status-drafted  { border-color: #3b82f6; }
-    .card.status-sent     { border-color: #16a34a; }
+    /* Pending/Upcoming = red, Drafted = orange, Sent = green */
+    .card                 { border-color: #fca5a5; }                                          /* pending → red */
+    .card.selected        { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); background: #fff9f9; }
+    .card.has-conflict    { border-color: #fbbf24; }
+    .card.status-drafted  { border-color: #fb923c; background: #fff8f3; }                     /* drafted → orange */
+    .card.status-drafted.selected { border-color: #ea580c; box-shadow: 0 0 0 3px rgba(234,88,12,.15); }
+    .card.status-sent     { border-color: #4ade80; background: #f0fdf4; }                     /* sent → green */
     .card.status-error    { border-color: #dc2626; }
-    .card.status-duplicate{ border-color: #f59e0b; }
+    .card.status-duplicate{ border-color: #fbbf24; background: #fffbeb; }
 
     .card-header { padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; }
     .card-checkbox { margin-top: 2px; flex-shrink: 0; width: 17px; height: 17px; cursor: pointer; accent-color: #1e3a5f; }
@@ -201,6 +204,8 @@
     .ab-inv-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
     .ab-inv-row { display: grid; grid-template-columns: 88px 60px 80px auto; gap: 6px; align-items: center; font-size: 12px; color: #374151; padding: 3px 0; border-bottom: 1px solid #f9fafb; }
     .ab-inv-row:last-child { border-bottom: none; }
+    .ab-sq-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #1e3a5f; color: #fff; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+    .ab-sq-btn:hover { background: #162d4a; }
     .ab-empty { text-align: center; padding: 60px 20px; color: #9ca3af; font-size: 15px; }
 
     /* Modal */
@@ -344,9 +349,9 @@
     <div class="form-group">
       <label for="settingDefaultDate">Default date on load</label>
       <select id="settingDefaultDate">
-        <option value="nextThursday">Next Thursday (delivery day)</option>
-        <option value="tomorrow">Tomorrow</option>
         <option value="today">Today</option>
+        <option value="tomorrow">Tomorrow</option>
+        <option value="nextThursday">Next Thursday (delivery day)</option>
       </select>
     </div>
     <button class="btn btn-save" id="btnSaveSettings">Save settings</button>
@@ -592,8 +597,7 @@ function renderAddressBook() {
       <div class="ab-card-header">
         <div class="ab-card-name">${esc(c.name)}</div>
         <div style="display:flex;gap:6px;align-items:center">
-          ${c.stopNum !== null && c.stopNum !== undefined ? `<span class="badge badge-stop">Stop ${c.stopNum}</span>` : ''}
-          ${c.bringInvoice ? `<span class="badge badge-bring">📄 Print</span>` : ''}
+          ${c.squareCustomerId ? `<a href="https://app.squareup.com/dashboard/customers/${c.squareCustomerId}?currentUnitToken=BYZ5P0549Z01F" target="_blank" class="ab-sq-btn">⬡ View invoices</a>` : ''}
         </div>
       </div>
       <div class="ab-card-body">
@@ -636,7 +640,7 @@ function copyText(text) {
 
 // ── Date helpers ────────────────────────────────────────────────────────────────
 function getDefaultDate() {
-  const pref = localStorage.getItem('defaultDate') || 'nextThursday';
+  const pref = localStorage.getItem('defaultDate') || 'today';
   const d = new Date();
   if (pref === 'today') return d;
   if (pref === 'tomorrow') { d.setDate(d.getDate() + 1); return d; }
@@ -806,7 +810,7 @@ function getSardelliPO(order) {
   if (!order.customerName.toLowerCase().includes('sardilli')) return null;
   try {
     const po = JSON.parse(localStorage.getItem('sardilli-po-latest') || '{}');
-    if (!po.po_number) return { warning: '⚠ No Sardilli PO in cache. Run sardilli-po-processor first.' };
+    if (!po.po_number) return null; // No PO cached — silently skip, don't warn
     const targetDate = (order.invoiceTitle || '').split(' ')[0];
     if (po.delivery_date && po.delivery_date !== targetDate)
       return { warning: `⚠ Cached PO #${po.po_number} is for ${po.delivery_date}, not ${targetDate}.` };
@@ -1136,6 +1140,7 @@ document.getElementById('btnConfirmSend').addEventListener('click', async () => 
     const data = await res.json();
     data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) state.orders[idx] = u; });
     renderOrders();
+    showSardelliPOBanner();
 
     const sentOrders = data.orders.filter(o => o.status === 'sent');
     const errOrders  = data.orders.filter(o => o.status === 'error');
@@ -1178,7 +1183,8 @@ function showSardelliPOBanner() {
   const sardilli = state.orders.find(o => o.customerName.toLowerCase().includes('sardilli'));
   const banner = document.getElementById('sardelliPOBanner');
   if (!banner) return;
-  if (!sardilli) { banner.style.display = 'none'; return; }
+  // Hide if no Sardilli order, or if the invoice has already been sent
+  if (!sardilli || sardilli.status === 'sent') { banner.style.display = 'none'; return; }
   banner.style.display = '';
   // Restore previously typed PO number
   const saved = localStorage.getItem('sardilli-po-session') || '';
@@ -1213,6 +1219,7 @@ loadFeatures();
 loadRules();
 loadNotes();
 renderAddressBook();
+setTimeout(() => { document.getElementById("btnLoad").click(); }, 300);
 </script>
 </body>
 </html>
