@@ -3,46 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HRH Invoice Dashboard</title>
+  <title>Invoice Generator</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7f5; color: #1a1a1a; min-height: 100vh; }
 
     /* ── Header ── */
-    .header { background: #1a5c35; color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    .header { background: #1e3a5f; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
     .header-title { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
     .header-sub   { font-size: 13px; opacity: .75; margin-top: 2px; }
-    .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .date-row { display: flex; align-items: center; gap: 8px; }
     .date-row label { font-size: 13px; color: #fff; opacity: .85; white-space: nowrap; }
-    .date-row input[type="date"] { padding: 7px 10px; border: none; border-radius: 6px; font-size: 14px; background: rgba(255,255,255,.15); color: #fff; cursor: pointer; }
+    .date-row input[type="date"] { padding: 10px 14px; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; background: rgba(255,255,255,.18); color: #fff; cursor: pointer; }
     .date-row input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+    .btn-sq-dash { background: rgba(255,255,255,.15); color: #fff; border: 1.5px solid rgba(255,255,255,.4); padding: 8px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: background .15s; }
+    .btn-sq-dash:hover { background: rgba(255,255,255,.25); }
 
     /* ── Tab nav ── */
     .tab-nav { background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; gap: 0; overflow-x: auto; }
-    .tab-btn { padding: 12px 20px; font-size: 13px; font-weight: 600; color: #6b7280; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; transition: color .15s, border-color .15s; }
-    .tab-btn:hover  { color: #1a5c35; }
-    .tab-btn.active { color: #1a5c35; border-bottom-color: #1a5c35; }
+    .tab-btn { padding: 12px 18px; font-size: 13px; font-weight: 600; color: #6b7280; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; transition: color .15s, border-color .15s; }
+    .tab-btn:hover  { color: #1e3a5f; }
+    .tab-btn.active { color: #1e3a5f; border-bottom-color: #1e3a5f; }
 
     /* ── Buttons ── */
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; white-space: nowrap; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; white-space: nowrap; }
     .btn:active { transform: scale(.97); }
     .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-    .btn-load    { background: rgba(255,255,255,.2); color: #fff; border: 1.5px solid rgba(255,255,255,.4); }
-    .btn-load:hover:not(:disabled)   { background: rgba(255,255,255,.3); }
-    .btn-draft   { background: #fff; color: #1a5c35; }
-    .btn-draft:hover:not(:disabled)  { background: #e8f5ee; }
+    .btn-load    { background: #e07020; color: #fff; }
+    .btn-load:hover:not(:disabled)    { background: #c45e10; }
+    .btn-draft   { background: #1e3a5f; color: #fff; }
+    .btn-draft:hover:not(:disabled)   { background: #162d4a; }
     .btn-send    { background: #d97706; color: #fff; }
-    .btn-send:hover:not(:disabled)   { background: #b45309; }
+    .btn-send:hover:not(:disabled)    { background: #b45309; }
     .btn-cancel  { background: #fff; color: #666; border: 1.5px solid #d1d5db; }
-    .btn-cancel:hover:not(:disabled) { background: #f9fafb; }
+    .btn-cancel:hover:not(:disabled)  { background: #f9fafb; }
     .btn-confirm      { background: #dc2626; color: #fff; }
     .btn-confirm-send { background: #d97706; color: #fff; }
-    .btn-save { background: #1a5c35; color: #fff; }
-    .btn-save:hover:not(:disabled) { background: #145228; }
+    .btn-save  { background: #1e3a5f; color: #fff; }
+    .btn-save:hover:not(:disabled) { background: #162d4a; }
+    .btn-sm    { padding: 5px 10px; font-size: 12px; border-radius: 5px; }
+    .btn-ghost { background: #f3f4f6; color: #374151; }
+    .btn-ghost:hover:not(:disabled) { background: #e5e7eb; }
+    .btn-month-end { background: #f3f4f6; color: #374151; border: 1.5px solid #d1d5db; }
+    .btn-month-end.active { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+    .btn-month-end:hover:not(:disabled) { background: #fef3c7; color: #92400e; }
 
     /* ── Toolbar ── */
-    .toolbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 56px; }
+    .toolbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 10px 24px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 52px; }
     .toolbar-stat { font-size: 13px; color: #6b7280; }
     .toolbar-stat strong { color: #111; }
     .toolbar-spacer { flex: 1; }
@@ -53,47 +61,76 @@
     .run-dot.orange { background: #d97706; }
     .run-dot.green  { background: #16a34a; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .toolbar-sep { width: 1px; height: 20px; background: #e5e7eb; }
 
     /* ── Main ── */
     .main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
     .state-box { text-align: center; padding: 60px 20px; color: #9ca3af; }
     .state-box p { font-size: 15px; }
 
-    /* ── Section labels ── */
-    .section-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; margin: 20px 0 10px; }
+    /* ── Section headers ── */
+    .section-header { display: flex; align-items: center; gap: 12px; margin: 24px 0 10px; }
+    .section-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; flex: 1; }
+    .section-count { font-size: 12px; font-weight: 600; color: #9ca3af; }
+    .section-actions { display: flex; gap: 6px; }
 
     /* ── Orders grid ── */
     .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
 
     /* ── Card ── */
     .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 2px solid #e5e7eb; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
-    .card.selected       { border-color: #1a5c35; box-shadow: 0 0 0 3px rgba(26,92,53,.12); }
-    .card.has-conflict   { border-color: #f59e0b; }
-    .card.status-drafted { border-color: #3b82f6; }
-    .card.status-sent    { border-color: #16a34a; }
-    .card.status-error   { border-color: #dc2626; }
+    .card.selected        { border-color: #1e3a5f; box-shadow: 0 0 0 3px rgba(30,58,95,.12); }
+    .card.has-conflict    { border-color: #f59e0b; }
+    .card.status-drafted  { border-color: #3b82f6; }
+    .card.status-sent     { border-color: #16a34a; }
+    .card.status-error    { border-color: #dc2626; }
+    .card.status-duplicate{ border-color: #f59e0b; }
 
     .card-header { padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; }
-    .card-checkbox { margin-top: 2px; flex-shrink: 0; width: 17px; height: 17px; cursor: pointer; accent-color: #1a5c35; }
+    .card-checkbox { margin-top: 2px; flex-shrink: 0; width: 17px; height: 17px; cursor: pointer; accent-color: #1e3a5f; }
     .card-meta { flex: 1; min-width: 0; }
-    .card-name    { font-size: 15px; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .card-email   { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .card-name  { font-size: 15px; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-email { font-size: 12px; color: #6b7280; margin-top: 2px; }
     .card-inv-title { font-size: 11px; color: #9ca3af; margin-top: 2px; }
-    .card-sq-id   { font-size: 10px; color: #c0c4cc; font-family: monospace; margin-top: 1px; }
-    .card-badges  { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+    .card-sq-id { font-size: 10px; color: #c0c4cc; font-family: monospace; margin-top: 1px; }
+    .card-badges { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
     .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
-    .badge-stop    { background: #f3f4f6; color: #374151; }
-    .badge-bring   { background: #fef9c3; color: #854d0e; }
-    .badge-sent    { background: #d1fae5; color: #065f46; }
-    .badge-drafted { background: #dbeafe; color: #1e40af; }
-    .badge-error   { background: #fee2e2; color: #991b1b; }
+    .badge-stop      { background: #f3f4f6; color: #374151; }
+    .badge-bring     { background: #fef9c3; color: #854d0e; }
+    .badge-sent      { background: #d1fae5; color: #065f46; }
+    .badge-drafted   { background: #dbeafe; color: #1e40af; }
+    .badge-error     { background: #fee2e2; color: #991b1b; }
+    .badge-duplicate { background: #fef3c7; color: #92400e; }
+    .badge-wow-new     { background: #dbeafe; color: #1d4ed8; }
+    .badge-wow-same    { background: #f0fdf4; color: #15803d; }
+    .badge-wow-changed { background: #fef9c3; color: #a16207; }
     .card-total { text-align: right; flex-shrink: 0; }
-    .card-total-amount { font-size: 17px; font-weight: 800; color: #1a5c35; }
+    .card-total-amount { font-size: 17px; font-weight: 800; color: #1e3a5f; }
     .card-total-label  { font-size: 11px; color: #9ca3af; }
 
     /* Conflict / error bars */
     .conflict-bar { background: #fffbeb; border-top: 1px solid #fde68a; padding: 8px 14px; font-size: 12px; color: #92400e; }
     .card-error   { background: #fef2f2; border-top: 1px solid #fca5a5; padding: 8px 14px; font-size: 12px; color: #991b1b; }
+
+    /* WoW diff section */
+    .wow-section { border-top: 1px solid #f3f4f6; }
+    .wow-toggle  { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 14px; font-size: 12px; color: #6b7280; background: none; border: none; cursor: pointer; text-align: left; }
+    .wow-toggle:hover { background: #f9fafb; color: #1e3a5f; }
+    .wow-body.closed { display: none; }
+    .wow-body { padding: 0 14px 10px; }
+    .wow-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .wow-table th { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; padding: 3px 4px; border-bottom: 1px solid #f3f4f6; text-align: right; }
+    .wow-table th:first-child { text-align: left; }
+    .wow-table td { padding: 4px 4px; border-bottom: 1px solid #f9fafb; color: #374151; text-align: right; }
+    .wow-table td:first-child { text-align: left; }
+    .wow-table tr:last-child td { border-bottom: none; }
+    .wow-new     .wow-name { color: #1d4ed8; font-weight: 600; }
+    .wow-dropped .wow-name { color: #9ca3af; text-decoration: line-through; }
+    .wow-changed .wow-name { color: #a16207; font-weight: 600; }
+    .wow-same    .wow-name { color: #6b7280; }
+    .wow-delta { font-size: 11px; color: #6b7280; padding: 4px 14px 0; }
+    .wow-delta.pos { color: #16a34a; }
+    .wow-delta.neg { color: #dc2626; }
 
     /* Line items */
     .card-body { border-top: 1px solid #f3f4f6; }
@@ -103,64 +140,79 @@
     .line-item:last-child { border-bottom: none; }
     .li-name  { color: #374151; font-weight: 500; }
     .li-qty, .li-price { border: 1px solid #e5e7eb; border-radius: 5px; padding: 3px 6px; font-size: 13px; width: 100%; text-align: right; background: #f9fafb; }
-    .li-qty:focus, .li-price:focus { outline: none; border-color: #1a5c35; background: #fff; }
+    .li-qty:focus, .li-price:focus { outline: none; border-color: #1e3a5f; background: #fff; }
     .li-total { font-weight: 600; color: #111; text-align: right; }
     .card-footer { padding: 8px 14px 10px; background: #fafafa; border-top: 1px solid #f3f4f6; display: flex; justify-content: flex-end; gap: 16px; font-size: 12px; color: #6b7280; flex-wrap: wrap; }
     .card-footer strong { color: #111; }
     .card-expand-toggle { padding: 6px 14px; font-size: 12px; color: #6b7280; background: none; border: none; border-top: 1px solid #f3f4f6; cursor: pointer; width: 100%; text-align: left; }
-    .card-expand-toggle:hover { background: #fafafa; color: #1a5c35; }
+    .card-expand-toggle:hover { background: #fafafa; color: #1e3a5f; }
     .inv-link { font-size: 12px; color: #3b82f6; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
     .inv-link:hover { text-decoration: underline; }
 
-    /* Mini cards (not-in-today, skipped) */
+    /* Mini cards */
     .mini-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
     .mini-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
     .mini-card-name   { font-weight: 600; color: #374151; }
     .mini-card-detail { color: #6b7280; font-size: 12px; margin-top: 3px; }
     .mini-card-items  { margin-top: 4px; color: #9ca3af; font-size: 11px; }
 
-    /* ── Settings / Notes / Features / Rules panels ── */
-    .panel { padding: 24px; max-width: 720px; margin: 0 auto; }
+    /* ── Settings/Notes/Features/Rules panels ── */
+    .panel { padding: 24px; max-width: 760px; margin: 0 auto; }
     .panel h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: #111; }
     .panel-desc { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
-
     .form-group { margin-bottom: 20px; }
     .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-    .form-group input[type="text"], .form-group select, .form-group textarea {
-      width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; background: #fff; color: #111;
-    }
-    .form-group input[type="text"]:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #1a5c35; box-shadow: 0 0 0 3px rgba(26,92,53,.1); }
+    .form-group input[type="text"], .form-group select, .form-group textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; background: #fff; color: #111; }
+    .form-group input[type="text"]:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #1e3a5f; box-shadow: 0 0 0 3px rgba(30,58,95,.1); }
     .form-group textarea { min-height: 240px; resize: vertical; font-family: inherit; line-height: 1.6; }
     .form-hint { font-size: 12px; color: #9ca3af; margin-top: 5px; }
-
-    /* Toggle rows */
     .toggle-list { display: flex; flex-direction: column; gap: 1px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
     .toggle-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: #fff; }
     .toggle-row:not(:last-child) { border-bottom: 1px solid #f3f4f6; }
     .toggle-row-info { flex: 1; }
     .toggle-row-label { font-size: 14px; font-weight: 600; color: #111; }
     .toggle-row-desc  { font-size: 12px; color: #6b7280; margin-top: 2px; }
-
-    /* Toggle switch */
     .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .toggle-slider { position: absolute; inset: 0; background: #d1d5db; border-radius: 24px; cursor: pointer; transition: background .2s; }
     .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-    .toggle-switch input:checked + .toggle-slider { background: #1a5c35; }
+    .toggle-switch input:checked + .toggle-slider { background: #1e3a5f; }
     .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
-
-    /* Rule list items */
     .rule-list { margin-top: 8px; padding: 10px 14px; background: #f9fafb; border-radius: 7px; border: 1px solid #e5e7eb; font-size: 12px; color: #374151; line-height: 1.8; }
     .rule-list li { list-style: disc; margin-left: 16px; }
+
+    /* ── Address Book ── */
+    .ab-wrap { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+    .ab-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .ab-toolbar h2 { font-size: 18px; font-weight: 700; color: #111; flex: 1; }
+    .ab-search { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; width: 220px; max-width: 100%; }
+    .ab-search:focus { outline: none; border-color: #1e3a5f; }
+    .ab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .ab-card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .ab-card-header { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #f3f4f6; background: #fafafa; }
+    .ab-card-name { font-size: 15px; font-weight: 700; color: #111; }
+    .ab-card-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; }
+    .ab-field { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .ab-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; min-width: 76px; flex-shrink: 0; }
+    .ab-sqid { font-family: monospace; font-size: 11px; color: #374151; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+    .ab-copy { font-size: 11px; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 0; flex-shrink: 0; }
+    .ab-copy:hover { text-decoration: underline; }
+    .ab-invoices { border-top: 1px solid #f3f4f6; padding: 10px 14px; }
+    .ab-inv-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+    .ab-inv-row { display: grid; grid-template-columns: 88px 60px 80px auto; gap: 6px; align-items: center; font-size: 12px; color: #374151; padding: 3px 0; border-bottom: 1px solid #f9fafb; }
+    .ab-inv-row:last-child { border-bottom: none; }
+    .ab-empty { text-align: center; padding: 60px 20px; color: #9ca3af; font-size: 15px; }
 
     /* Modal */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
-    .modal { background: #fff; border-radius: 12px; padding: 28px; max-width: 440px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    .modal { background: #fff; border-radius: 12px; padding: 28px; max-width: 480px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.25); max-height: 85vh; overflow-y: auto; }
     .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
     .modal p  { font-size: 14px; color: #4b5563; line-height: 1.5; }
-    .modal-list { margin: 12px 0; max-height: 200px; overflow-y: auto; font-size: 13px; color: #374151; border: 1px solid #e5e7eb; border-radius: 7px; padding: 10px 14px; line-height: 1.9; }
+    .modal-list { margin: 12px 0; max-height: 200px; overflow-y: auto; font-size: 13px; color: #374151; border: 1px solid #e5e7eb; border-radius: 7px; padding: 10px 14px; line-height: 2; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .complete-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
+    .complete-row:last-child { border-bottom: none; }
 
     /* Toast */
     .toast { position: fixed; bottom: 24px; right: 24px; background: #111; color: #fff; padding: 12px 18px; border-radius: 8px; font-size: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.3); z-index: 200; opacity: 0; transform: translateY(10px); transition: opacity .2s, transform .2s; pointer-events: none; }
@@ -172,10 +224,11 @@
 
     @media (max-width: 640px) {
       .header { padding: 12px 16px; }
-      .main   { padding: 14px 16px; }
-      .toolbar { padding: 10px 16px; }
+      .main { padding: 14px 16px; }
+      .toolbar { padding: 8px 16px; }
       .orders-grid { grid-template-columns: 1fr; }
       .panel { padding: 16px; }
+      .ab-wrap { padding: 14px 16px; }
     }
   </style>
 </head>
@@ -184,12 +237,15 @@
 <!-- ── Header ── -->
 <div class="header">
   <div>
-    <div class="header-title">🌱 HRH Invoice Dashboard</div>
+    <div class="header-title">Invoice Generator</div>
     <div class="header-sub">High Ridge Hydroponics</div>
   </div>
   <div class="header-right">
+    <a class="btn-sq-dash" href="https://app.squareup.com/dashboard/invoices?currentUnitToken=BYZ5P0549Z01F" target="_blank">
+      ⬡ Square Dashboard
+    </a>
     <div class="date-row">
-      <label for="datePicker">Delivery date</label>
+      <label for="datePicker">Fulfillment date</label>
       <input type="date" id="datePicker" />
     </div>
     <button class="btn btn-load" id="btnLoad">Load orders</button>
@@ -199,15 +255,22 @@
 <!-- ── Tab nav ── -->
 <div class="tab-nav">
   <button class="tab-btn active" data-tab="orders">📋 Orders</button>
+  <button class="tab-btn" data-tab="addressbook">📒 Address Book</button>
   <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
   <button class="tab-btn" data-tab="notes">📝 Notes</button>
   <button class="tab-btn" data-tab="features">🔧 Features</button>
   <button class="tab-btn" data-tab="rules">📏 Rules</button>
 </div>
 
-<!-- ── Toolbar (Orders tab only) ── -->
+<!-- ── Toolbar ── -->
 <div class="toolbar" id="toolbar" style="display:none">
   <span class="toolbar-stat" id="statText"></span>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select all pending</button>
+  <button class="btn btn-sm btn-ghost" onclick="selectAllDrafted()">Select all drafts</button>
+  <button class="btn btn-sm btn-ghost" onclick="deselectAll()">Deselect all</button>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-sm btn-month-end" id="btnMonthEnd" onclick="toggleMonthEnd()">📅 Month-end mode</button>
   <div class="toolbar-spacer"></div>
   <div class="run-status" id="runStatus">
     <div class="run-dot blue" id="runDot"></div>
@@ -221,16 +284,27 @@
 <div id="tab-orders">
   <div class="main">
     <div class="state-box" id="stateEmpty">
-      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:12px;opacity:.4">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-      </svg>
-      <p>Pick a delivery date and click <strong>Load orders</strong></p>
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:12px;opacity:.4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <p>Pick a fulfillment date and click <strong>Load orders</strong></p>
     </div>
     <div class="state-box" id="stateLoading" style="display:none">
-      <div style="margin:0 auto 12px;width:36px;height:36px;border:3px solid #d1fae5;border-top-color:#1a5c35;border-radius:50%;animation:spin .8s linear infinite"></div>
+      <div style="margin:0 auto 12px;width:36px;height:36px;border:3px solid #d1fae5;border-top-color:#1e3a5f;border-radius:50%;animation:spin .8s linear infinite"></div>
       <p>Loading orders from AppSheet…</p>
     </div>
     <div id="stateOrders" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ── Tab: Address Book ── -->
+<div id="tab-addressbook" style="display:none">
+  <div class="ab-wrap">
+    <div class="ab-toolbar">
+      <h2>📒 Address Book</h2>
+      <input type="text" class="ab-search" id="abSearch" placeholder="Search customers…" oninput="renderAddressBook()">
+      <button class="btn btn-sm btn-ghost" onclick="clearAddressBook()">Clear all</button>
+    </div>
+    <div id="abEmpty" class="ab-empty">No customers yet. Load orders to build your address book automatically.</div>
+    <div id="abGrid" class="ab-grid" style="display:none"></div>
   </div>
 </div>
 
@@ -238,14 +312,12 @@
 <div id="tab-settings" style="display:none">
   <div class="panel">
     <h2>Settings</h2>
-    <p class="panel-desc">Configuration for the invoice dashboard. Changes are saved automatically.</p>
-
+    <p class="panel-desc">Configuration for the invoice dashboard.</p>
     <div class="form-group">
       <label for="settingWorkerUrl">Cloudflare Worker URL</label>
       <input type="text" id="settingWorkerUrl" placeholder="https://your-worker.workers.dev" />
-      <div class="form-hint">The backend Worker that fetches AppSheet data and calls Square.</div>
+      <div class="form-hint">Backend Worker that fetches AppSheet data and calls Square.</div>
     </div>
-
     <div class="form-group">
       <label for="settingDefaultDate">Default date on load</label>
       <select id="settingDefaultDate">
@@ -254,7 +326,6 @@
         <option value="today">Today</option>
       </select>
     </div>
-
     <button class="btn btn-save" id="btnSaveSettings">Save settings</button>
   </div>
 </div>
@@ -263,7 +334,7 @@
 <div id="tab-notes" style="display:none">
   <div class="panel">
     <h2>Notes</h2>
-    <p class="panel-desc">Freeform notes — saved automatically in your browser.</p>
+    <p class="panel-desc">Freeform notes — saved automatically.</p>
     <div class="form-group">
       <textarea id="notesArea" placeholder="Type your notes here…"></textarea>
     </div>
@@ -275,58 +346,27 @@
 <div id="tab-features" style="display:none">
   <div class="panel">
     <h2>Features</h2>
-    <p class="panel-desc">Toggle UI features on and off. Settings are saved in your browser.</p>
-
+    <p class="panel-desc">Toggle UI features. Saved in your browser.</p>
     <div class="toggle-list">
       <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Auto-expand order cards</div>
-          <div class="toggle-row-desc">Show line items by default without clicking "Show items"</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="featAutoExpand" checked onchange="saveFeatures()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="toggle-row-info"><div class="toggle-row-label">Auto-expand order cards</div><div class="toggle-row-desc">Show line items by default without clicking "Show items"</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="featAutoExpand" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Show Square Customer ID on cards</div>
-          <div class="toggle-row-desc">Display the Square Customer ID below the customer name</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="featShowSqId" checked onchange="saveFeatures()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="toggle-row-info"><div class="toggle-row-label">Show Square Customer ID on cards</div><div class="toggle-row-desc">Display the Square Customer ID below the customer name</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="featShowSqId" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Show "Not in today's run" section</div>
-          <div class="toggle-row-desc">Display customers who ordered last week but not today</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="featShowNotInToday" checked onchange="saveFeatures()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="toggle-row-info"><div class="toggle-row-label">Show WoW diff panel on cards</div><div class="toggle-row-desc">Show "vs last week" expandable diff panel on each order card</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="featShowWow" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Show "Skipped" section</div>
-          <div class="toggle-row-desc">Display orders that were automatically skipped and why</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="featShowSkipped" checked onchange="saveFeatures()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="toggle-row-info"><div class="toggle-row-label">Show "Upcoming" section</div><div class="toggle-row-desc">Display customers who ordered last week but not today, and skipped orders</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="featShowNotInToday" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Show invoice title on cards</div>
-          <div class="toggle-row-desc">Display the invoice title (e.g. "06/26/2026 Invoice") on each card</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="featShowInvTitle" checked onchange="saveFeatures()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="toggle-row-info"><div class="toggle-row-label">Show invoice title on cards</div><div class="toggle-row-desc">Display the invoice title (e.g. "06/26/2026 Invoice") on each card</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="featShowInvTitle" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
       </div>
     </div>
   </div>
@@ -336,77 +376,36 @@
 <div id="tab-rules" style="display:none">
   <div class="panel">
     <h2>Rules</h2>
-    <p class="panel-desc">Business rules applied when loading orders. Toggle rules on or off — changes take effect on the next order load.</p>
-
+    <p class="panel-desc">Business rules applied when loading orders. Changes take effect on next load.</p>
     <div class="toggle-list">
       <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Skip Home Delivery customers</div>
-          <div class="toggle-row-desc">Customers with type "Home Delivery" are never invoiced via this tool</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="ruleSkipHomeDelivery" checked onchange="saveRules()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="toggle-row-info"><div class="toggle-row-label">Skip Home Delivery customers</div><div class="toggle-row-desc">Home Delivery type accounts are never invoiced via this tool</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="ruleSkipHomeDelivery" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
         <div class="toggle-row-info">
           <div class="toggle-row-label">Skip always-excluded customers</div>
-          <div class="toggle-row-desc">
-            <ul class="rule-list" style="margin:4px 0 0">
-              <li>Allium Eatery</li>
-              <li>Taner's Samples</li>
-              <li>Westport Farmers Market</li>
-              <li>Tony Mycelium Farm</li>
-              <li>Herbaceous Catering</li>
-            </ul>
-          </div>
+          <div class="toggle-row-desc"><ul class="rule-list" style="margin:4px 0 0"><li>Allium Eatery</li><li>Taner's Samples</li><li>Westport Farmers Market</li><li>Tony Mycelium Farm</li><li>Herbaceous Catering</li></ul></div>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="ruleSkipAlways" checked onchange="saveRules()">
-          <span class="toggle-slider"></span>
-        </label>
+        <label class="toggle-switch"><input type="checkbox" id="ruleSkipAlways" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
         <div class="toggle-row-info">
           <div class="toggle-row-label">Skip month-end billing customers</div>
-          <div class="toggle-row-desc">
-            <ul class="rule-list" style="margin:4px 0 0">
-              <li>Bora (Chef Yoel)</li>
-              <li>Terra Sole</li>
-              <li>Tavern at Graybarns</li>
-              <li>Tequila Escape</li>
-              <li>Gallo Ristorante</li>
-            </ul>
-          </div>
+          <div class="toggle-row-desc"><ul class="rule-list" style="margin:4px 0 0"><li>Bora (Chef Yoel)</li><li>Terra Sole</li><li>Tavern at Graybarns</li><li>Tequila Escape</li><li>Gallo Ristorante</li></ul></div>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="ruleSkipMonthEnd" checked onchange="saveRules()">
-          <span class="toggle-slider"></span>
-        </label>
+        <label class="toggle-switch"><input type="checkbox" id="ruleSkipMonthEnd" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Skip already-invoiced orders</div>
-          <div class="toggle-row-desc">Orders marked "Sent" in AppSheet are excluded from the run</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="ruleSkipAlreadySent" checked onchange="saveRules()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="toggle-row-info"><div class="toggle-row-label">Skip already-invoiced orders</div><div class="toggle-row-desc">Orders marked "Sent" in AppSheet are excluded</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="ruleSkipAlreadySent" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Apply $50 delivery fee threshold</div>
-          <div class="toggle-row-desc">Add a $5 delivery fee for orders under $50 (except exempt accounts)</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="ruleDeliveryFee" checked onchange="saveRules()">
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="toggle-row-info"><div class="toggle-row-label">Apply $50 delivery fee threshold</div><div class="toggle-row-desc">Add $5 delivery fee for orders under $50 (except exempt accounts)</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="ruleDeliveryFee" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
       </div>
     </div>
-    <div class="form-hint" style="margin-top:14px">⚠️ Rule changes take effect the next time you click <strong>Load orders</strong>. The rules are passed to the backend Worker.</div>
+    <div class="form-hint" style="margin-top:14px">⚠️ Rule changes take effect on next <strong>Load orders</strong>.</div>
   </div>
 </div>
 
@@ -414,7 +413,7 @@
 <div class="modal-overlay" id="modalDraft">
   <div class="modal">
     <h3>Create draft invoices?</h3>
-    <p>This will create Square draft invoices for the following customers. <strong>No emails sent yet.</strong></p>
+    <p>This will create Square draft invoices. <strong>No emails sent yet.</strong></p>
     <div class="modal-list" id="modalDraftList"></div>
     <div class="modal-actions">
       <button class="btn btn-cancel" onclick="closeModal('modalDraft')">Cancel</button>
@@ -425,7 +424,7 @@
 <div class="modal-overlay" id="modalSend">
   <div class="modal">
     <h3>Send invoices?</h3>
-    <p>This will <strong>email invoices to customers</strong> and mark them sent in AppSheet. This cannot be undone.</p>
+    <p>This will <strong>email invoices to customers</strong> and mark them sent in AppSheet. Cannot be undone.</p>
     <div class="modal-list" id="modalSendList"></div>
     <div class="modal-actions">
       <button class="btn btn-cancel" onclick="closeModal('modalSend')">Cancel</button>
@@ -433,28 +432,33 @@
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="modalComplete">
+  <div class="modal">
+    <h3>🎉 Invoice Run Complete</h3>
+    <p id="completeSummaryText" style="margin-bottom:12px"></p>
+    <div id="completeList" style="border:1px solid #e5e7eb;border-radius:7px;padding:10px 14px;max-height:260px;overflow-y:auto;font-size:13px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-save" onclick="closeModal('modalComplete')">Done</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ─────────────────────────────────────────────────────────────────────────────
-// Config (overrideable from Settings tab)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Config ──────────────────────────────────────────────────────────────────────
 let WORKER_URL = localStorage.getItem('workerUrl') || 'https://aged-mouse-f451.highridgehydroponics.workers.dev';
+const SQUARE_DASH_URL = 'https://app.squareup.com/dashboard/invoices?currentUnitToken=BYZ5P0549Z01F';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// State
-// ─────────────────────────────────────────────────────────────────────────────
+// ── State ───────────────────────────────────────────────────────────────────────
 let state = { orders: [], notInToday: [], skipped: [] };
+let monthEndMode = false;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Persistent settings / features / rules (localStorage)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Persistent storage ──────────────────────────────────────────────────────────
 function loadSettings() {
-  document.getElementById('settingWorkerUrl').value    = WORKER_URL;
-  document.getElementById('settingDefaultDate').value  = localStorage.getItem('defaultDate') || 'nextThursday';
+  document.getElementById('settingWorkerUrl').value   = WORKER_URL;
+  document.getElementById('settingDefaultDate').value = localStorage.getItem('defaultDate') || 'nextThursday';
 }
-
 function saveSettings() {
   const url = document.getElementById('settingWorkerUrl').value.trim();
   if (url) { WORKER_URL = url; localStorage.setItem('workerUrl', url); }
@@ -464,27 +468,24 @@ function saveSettings() {
 
 function loadFeatures() {
   const f = JSON.parse(localStorage.getItem('features') || '{}');
-  document.getElementById('featAutoExpand').checked    = f.autoExpand    !== false;
-  document.getElementById('featShowSqId').checked      = f.showSqId      !== false;
-  document.getElementById('featShowNotInToday').checked= f.showNotInToday!== false;
-  document.getElementById('featShowSkipped').checked   = f.showSkipped   !== false;
-  document.getElementById('featShowInvTitle').checked  = f.showInvTitle  !== false;
+  document.getElementById('featAutoExpand').checked     = f.autoExpand    !== false;
+  document.getElementById('featShowSqId').checked       = f.showSqId      !== false;
+  document.getElementById('featShowWow').checked        = f.showWow       !== false;
+  document.getElementById('featShowNotInToday').checked = f.showNotInToday!== false;
+  document.getElementById('featShowInvTitle').checked   = f.showInvTitle  !== false;
 }
-
 function saveFeatures() {
   localStorage.setItem('features', JSON.stringify({
     autoExpand:     document.getElementById('featAutoExpand').checked,
     showSqId:       document.getElementById('featShowSqId').checked,
+    showWow:        document.getElementById('featShowWow').checked,
     showNotInToday: document.getElementById('featShowNotInToday').checked,
-    showSkipped:    document.getElementById('featShowSkipped').checked,
     showInvTitle:   document.getElementById('featShowInvTitle').checked,
   }));
+  // Re-render if orders loaded
+  if (document.getElementById('toolbar').dataset.loaded === '1') renderOrders();
 }
-
-function getFeature(key) {
-  const f = JSON.parse(localStorage.getItem('features') || '{}');
-  return f[key] !== false; // default true
-}
+function getFeature(key) { const f = JSON.parse(localStorage.getItem('features') || '{}'); return f[key] !== false; }
 
 function loadRules() {
   const r = JSON.parse(localStorage.getItem('rules') || '{}');
@@ -494,7 +495,6 @@ function loadRules() {
   document.getElementById('ruleSkipAlreadySent').checked  = r.skipAlreadySent  !== false;
   document.getElementById('ruleDeliveryFee').checked      = r.deliveryFee      !== false;
 }
-
 function saveRules() {
   localStorage.setItem('rules', JSON.stringify({
     skipHomeDelivery: document.getElementById('ruleSkipHomeDelivery').checked,
@@ -504,13 +504,10 @@ function saveRules() {
     deliveryFee:      document.getElementById('ruleDeliveryFee').checked,
   }));
 }
-
 function getRules() { return JSON.parse(localStorage.getItem('rules') || '{}'); }
 
-// Notes
-function loadNotes() { document.getElementById('notesArea').value = localStorage.getItem('notes') || ''; }
-
 let notesTimer;
+function loadNotes() { document.getElementById('notesArea').value = localStorage.getItem('notes') || ''; }
 document.getElementById('notesArea').addEventListener('input', () => {
   localStorage.setItem('notes', document.getElementById('notesArea').value);
   clearTimeout(notesTimer);
@@ -519,51 +516,129 @@ document.getElementById('notesArea').addEventListener('input', () => {
   notesTimer = setTimeout(() => { el.textContent = '✓ Saved'; setTimeout(() => { el.textContent = ''; }, 1500); }, 600);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Date helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Address Book ────────────────────────────────────────────────────────────────
+function updateAddressBook(orders) {
+  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
+  for (const o of orders) {
+    const key = o.squareCustomerId || `name:${o.customerName}`;
+    if (!book[key]) {
+      book[key] = { name: o.customerName, email: o.customerEmail, squareCustomerId: o.squareCustomerId, stopNum: o.stopNum, bringInvoice: o.bringInvoice, invoices: [], lastSeen: '' };
+    } else {
+      book[key].email  = o.customerEmail || book[key].email;
+      book[key].stopNum = o.stopNum;
+      book[key].bringInvoice = o.bringInvoice;
+      if (o.squareCustomerId) book[key].squareCustomerId = o.squareCustomerId;
+    }
+    book[key].lastSeen = (o.invoiceTitle || '').split(' ')[0] || book[key].lastSeen;
+  }
+  localStorage.setItem('addressBook', JSON.stringify(book));
+}
+
+function updateAddressBookWithInvoices(sentOrders) {
+  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
+  for (const o of sentOrders) {
+    const key = o.squareCustomerId || `name:${o.customerName}`;
+    if (!book[key]) continue;
+    const date = (o.invoiceTitle || '').split(' ')[0] || '';
+    const already = book[key].invoices.some(inv => inv.date === date && inv.invoiceNumber === o.squareInvoiceNumber);
+    if (!already) {
+      book[key].invoices.unshift({ date, total: o.total, invoiceNumber: o.squareInvoiceNumber, squareInvoiceUrl: o.squareInvoiceUrl, status: 'sent' });
+    }
+  }
+  localStorage.setItem('addressBook', JSON.stringify(book));
+}
+
+function renderAddressBook() {
+  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
+  const query = (document.getElementById('abSearch')?.value || '').toLowerCase();
+  let customers = Object.values(book).filter(c =>
+    c.name.toLowerCase().includes(query) || (c.email || '').toLowerCase().includes(query)
+  );
+  customers.sort((a, b) => (a.stopNum ?? 999) - (b.stopNum ?? 999));
+
+  const abEmpty = document.getElementById('abEmpty');
+  const abGrid  = document.getElementById('abGrid');
+  if (!abEmpty || !abGrid) return;
+
+  if (!customers.length) { abEmpty.style.display = ''; abGrid.style.display = 'none'; return; }
+  abEmpty.style.display = 'none';
+  abGrid.style.display  = '';
+
+  abGrid.innerHTML = customers.map(c => `
+    <div class="ab-card">
+      <div class="ab-card-header">
+        <div class="ab-card-name">${esc(c.name)}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${c.stopNum !== null && c.stopNum !== undefined ? `<span class="badge badge-stop">Stop ${c.stopNum}</span>` : ''}
+          ${c.bringInvoice ? `<span class="badge badge-bring">📄 Print</span>` : ''}
+        </div>
+      </div>
+      <div class="ab-card-body">
+        ${c.email ? `<div class="ab-field"><span class="ab-label">Email</span><span style="font-size:13px;word-break:break-all">${esc(c.email)}</span></div>` : ''}
+        ${c.squareCustomerId ? `
+          <div class="ab-field">
+            <span class="ab-label">Square ID</span>
+            <code class="ab-sqid">${esc(c.squareCustomerId)}</code>
+            <button class="ab-copy" onclick="copyText('${esc(c.squareCustomerId)}')">Copy</button>
+          </div>` : ''}
+        ${c.lastSeen ? `<div class="ab-field"><span class="ab-label">Last seen</span><span style="font-size:13px">${esc(c.lastSeen)}</span></div>` : ''}
+      </div>
+      ${c.invoices?.length ? `
+        <div class="ab-invoices">
+          <div class="ab-inv-label">Invoice history (${c.invoices.length})</div>
+          ${c.invoices.slice(0,8).map(inv => `
+            <div class="ab-inv-row">
+              <span>${esc(inv.date || '')}</span>
+              <span style="font-weight:600">$${(inv.total||0).toFixed(2)}</span>
+              <span style="color:#6b7280">${esc(inv.invoiceNumber || '—')}</span>
+              <span>${inv.squareInvoiceUrl ? `<a href="${esc(inv.squareInvoiceUrl)}" target="_blank" style="color:#3b82f6;font-size:11px">↗ View</a>` : ''}</span>
+            </div>
+          `).join('')}
+        </div>` : ''}
+    </div>
+  `).join('');
+}
+
+function clearAddressBook() {
+  if (!confirm('Clear the entire address book? This cannot be undone.')) return;
+  localStorage.removeItem('addressBook');
+  renderAddressBook();
+  showToast('Address book cleared');
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('Copied!', 'green'));
+}
+
+// ── Date helpers ────────────────────────────────────────────────────────────────
 function getDefaultDate() {
   const pref = localStorage.getItem('defaultDate') || 'nextThursday';
   const d = new Date();
   if (pref === 'today') return d;
   if (pref === 'tomorrow') { d.setDate(d.getDate() + 1); return d; }
-  // nextThursday
   const diff = (4 - d.getDay() + 7) % 7 || 7;
   d.setDate(d.getDate() + diff);
   return d;
 }
-function toInputFmt(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function toInputFmt(d)   { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function toDisplayFmt(iso) { const [y,m,d] = iso.split('-'); return `${m}/${d}/${y}`; }
 
-// Init date picker
 const picker = document.getElementById('datePicker');
 picker.value = toInputFmt(getDefaultDate());
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Tab switching
-// ─────────────────────────────────────────────────────────────────────────────
-const TABS = ['orders', 'settings', 'notes', 'features', 'rules'];
+// ── Tab switching ───────────────────────────────────────────────────────────────
+const TABS = ['orders','addressbook','settings','notes','features','rules'];
 function switchTab(name) {
-  TABS.forEach(t => {
-    document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
-  });
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === name);
-  });
-  // Toolbar only shows on orders tab
+  TABS.forEach(t => { document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none'; });
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
   const toolbar = document.getElementById('toolbar');
   if (toolbar.dataset.loaded === '1') toolbar.style.display = name === 'orders' ? '' : 'none';
+  if (name === 'addressbook') renderAddressBook();
 }
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-});
-
-// Settings save button
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 document.getElementById('btnSaveSettings').addEventListener('click', saveSettings);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DOM refs
-// ─────────────────────────────────────────────────────────────────────────────
+// ── DOM refs ────────────────────────────────────────────────────────────────────
 const toolbar      = document.getElementById('toolbar');
 const statText     = document.getElementById('statText');
 const runStatus    = document.getElementById('runStatus');
@@ -575,9 +650,7 @@ const stateEmpty   = document.getElementById('stateEmpty');
 const stateLoading = document.getElementById('stateLoading');
 const stateOrders  = document.getElementById('stateOrders');
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Toast
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Toast ───────────────────────────────────────────────────────────────────────
 let toastTimer;
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
@@ -587,27 +660,36 @@ function showToast(msg, type = '') {
   toastTimer = setTimeout(() => { t.className = 'toast'; }, 3500);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Modal
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Modal ───────────────────────────────────────────────────────────────────────
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HTML escape
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Escape HTML ─────────────────────────────────────────────────────────────────
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Selected orders
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Selection helpers ───────────────────────────────────────────────────────────
 function selectedOrders() {
   return state.orders.filter(o => { const cb = document.getElementById(`cb-${o.id}`); return cb && cb.checked; });
 }
+function selectAllPending()  { state.orders.filter(o => o.status === 'pending'  && !o.squareConflict).forEach(o => setChecked(o.id, true));  updateToolbar(); }
+function selectAllDrafted()  { state.orders.filter(o => o.status === 'drafted').forEach(o => setChecked(o.id, true));  updateToolbar(); }
+function deselectAll()       { state.orders.forEach(o => setChecked(o.id, false)); updateToolbar(); }
+function setChecked(id, val) {
+  const cb   = document.getElementById(`cb-${id}`);
+  const card = document.getElementById(`card-${id}`);
+  if (cb) cb.checked = val;
+  if (card) card.classList.toggle('selected', val);
+}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Status dot
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Month-end mode ──────────────────────────────────────────────────────────────
+function toggleMonthEnd() {
+  monthEndMode = !monthEndMode;
+  document.getElementById('btnMonthEnd').classList.toggle('active', monthEndMode);
+  document.getElementById('btnMonthEnd').textContent = monthEndMode ? '📅 Month-end ON' : '📅 Month-end mode';
+  showToast(monthEndMode ? 'Month-end mode on — reload orders to include those customers' : 'Month-end mode off', monthEndMode ? '' : '');
+}
+
+// ── Status dot ──────────────────────────────────────────────────────────────────
 function setStatus(msg, color) {
   if (!msg) { runStatus.classList.remove('visible'); return; }
   runStatus.classList.add('visible');
@@ -615,20 +697,19 @@ function setStatus(msg, color) {
   runStatusTxt.textContent = msg;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Toolbar stats
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Toolbar stats ───────────────────────────────────────────────────────────────
 function updateToolbar() {
   const sel   = selectedOrders();
   const grand = sel.reduce((s,o) => s + (o.total||0), 0);
-  statText.innerHTML = `<strong>${sel.length}</strong> of <strong>${state.orders.length}</strong> selected &nbsp;·&nbsp; Total: <strong>$${grand.toFixed(2)}</strong>`;
+  const pending  = state.orders.filter(o => o.status === 'pending').length;
+  const drafted  = state.orders.filter(o => o.status === 'drafted').length;
+  const sent     = state.orders.filter(o => o.status === 'sent').length;
+  statText.innerHTML = `<strong>${sel.length}</strong> selected &nbsp;·&nbsp; $${grand.toFixed(2)} &nbsp;·&nbsp; <span style="color:#6b7280">${pending} pending · ${drafted} drafted · ${sent} sent</span>`;
   btnDraft.style.display = sel.some(o => o.status === 'pending')  ? '' : 'none';
   btnSend.style.display  = sel.some(o => o.status === 'drafted') ? '' : 'none';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Recompute line totals
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Recompute card line totals ──────────────────────────────────────────────────
 function recomputeCard(orderId) {
   const order = state.orders.find(o => o.id === orderId);
   if (!order) return;
@@ -653,45 +734,112 @@ function recomputeCard(orderId) {
   updateToolbar();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Render a single card
-// ─────────────────────────────────────────────────────────────────────────────
+// ── WoW diff panel ──────────────────────────────────────────────────────────────
+function toggleWow(id) {
+  const body = document.getElementById(`wow-body-${id}`);
+  const btn  = document.getElementById(`wow-btn-${id}`);
+  if (!body) return;
+  const closed = body.classList.toggle('closed');
+  if (btn) btn.textContent = (closed ? '▸' : '▾') + ' vs last week';
+}
+
+function buildWowHtml(order) {
+  const wow = order.wow;
+  if (!wow || !getFeature('showWow')) return '';
+
+  const badgeHtml = wow.status === 'new'
+    ? `<span class="badge badge-wow-new">🆕 New customer</span>`
+    : wow.status === 'changed'
+      ? `<span class="badge badge-wow-changed">⚠ Changed ${wow.deltaTotal > 0 ? '+' : ''}$${wow.deltaTotal.toFixed(2)}</span>`
+      : `<span class="badge badge-wow-same">✓ Same as last week</span>`;
+
+  if (wow.status === 'new') return badgeHtml; // no panel for new customers
+
+  const rows = wow.items.map(item => {
+    const cls  = `wow-${item.change}`;
+    const thisCol = item.thisQty !== null ? `${item.thisQty}× ($${item.thisTotal?.toFixed(2)})` : '—';
+    const lastCol = item.lastQty !== null ? `${item.lastQty}× ($${item.lastTotal?.toFixed(2)})` : '—';
+    return `<tr class="${cls}"><td class="wow-name">${esc(item.name)}</td><td>${thisCol}</td><td>${lastCol}</td></tr>`;
+  }).join('');
+
+  const deltaClass = wow.deltaTotal > 0 ? 'pos' : wow.deltaTotal < 0 ? 'neg' : '';
+
+  return `${badgeHtml}
+    <div class="wow-section">
+      <button class="wow-toggle" id="wow-btn-${order.id}" onclick="toggleWow('${order.id}')">▸ vs last week</button>
+      <div class="wow-body closed" id="wow-body-${order.id}">
+        <table class="wow-table">
+          <thead><tr><th>Product</th><th style="text-align:right">This week</th><th style="text-align:right">Last week</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        ${wow.deltaTotal !== 0 ? `<div class="wow-delta ${deltaClass}">Net change: ${wow.deltaTotal > 0 ? '+' : ''}$${wow.deltaTotal.toFixed(2)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── Sardilli PO check ───────────────────────────────────────────────────────────
+function getSardelliPO(order) {
+  if (!order.customerName.toLowerCase().includes('sardilli')) return null;
+  try {
+    const po = JSON.parse(localStorage.getItem('sardilli-po-latest') || '{}');
+    if (!po.po_number) return { warning: '⚠ No Sardilli PO in cache. Run sardilli-po-processor first.' };
+    const targetDate = (order.invoiceTitle || '').split(' ')[0];
+    if (po.delivery_date && po.delivery_date !== targetDate)
+      return { warning: `⚠ Cached PO #${po.po_number} is for ${po.delivery_date}, not ${targetDate}.` };
+    const poTotal    = parseFloat(po.po_total || 0);
+    const orderTotal = order.subtotal;
+    if (Math.abs(poTotal - orderTotal) > 0.02)
+      return { warning: `⚠ PO #${po.po_number} total ($${poTotal.toFixed(2)}) ≠ order ($${orderTotal.toFixed(2)}). Resolve before invoicing.`, poNumber: po.po_number };
+    return { poNumber: po.po_number, matched: true };
+  } catch { return null; }
+}
+
+// ── Render a single card ────────────────────────────────────────────────────────
 function renderCard(order) {
-  const isSent    = order.status === 'sent';
-  const isDrafted = order.status === 'drafted';
-  const isError   = order.status === 'error';
-  const hasDfee   = order.deliveryFee > 0;
-  const ro        = isSent ? 'readonly disabled' : '';
-  const autoExpand = getFeature('autoExpand');
+  const isSent      = order.status === 'sent';
+  const isDrafted   = order.status === 'drafted';
+  const isError     = order.status === 'error';
+  const isDuplicate = order.status === 'duplicate';
+  const hasDfee     = order.deliveryFee > 0;
+  const ro          = isSent ? 'readonly disabled' : '';
+  const autoExpand  = getFeature('autoExpand');
 
   let cls = 'card';
   if (!order.squareConflict && order.status === 'pending') cls += ' selected';
   if (order.squareConflict && order.status === 'pending')  cls += ' has-conflict';
-  if (isDrafted) cls += ' status-drafted';
-  if (isSent)    cls += ' status-sent';
-  if (isError)   cls += ' status-error';
+  if (isDrafted)   cls += ' status-drafted';
+  if (isSent)      cls += ' status-sent';
+  if (isError)     cls += ' status-error';
+  if (isDuplicate) cls += ' status-duplicate';
 
   const stopBadge   = order.stopNum !== null ? `<span class="badge badge-stop">Stop ${order.stopNum}</span>` : '';
   const bringBadge  = order.bringInvoice ? `<span class="badge badge-bring">📄 Print invoice</span>` : '';
   const statusBadge = isSent    ? `<span class="badge badge-sent">✓ Sent</span>`
                     : isDrafted ? `<span class="badge badge-drafted">Draft created</span>`
+                    : isDuplicate ? `<span class="badge badge-duplicate">⚠ Duplicate</span>`
                     : isError   ? `<span class="badge badge-error">Error</span>` : '';
 
-  const invTitleLine = getFeature('showInvTitle') && order.invoiceTitle
-    ? `<div class="card-inv-title">${esc(order.invoiceTitle)}</div>` : '';
-  const sqIdLine = getFeature('showSqId') && order.squareCustomerId
-    ? `<div class="card-sq-id">SQ: ${esc(order.squareCustomerId)}</div>` : '';
+  const invTitleLine = getFeature('showInvTitle') && order.invoiceTitle ? `<div class="card-inv-title">${esc(order.invoiceTitle)}</div>` : '';
+  const sqIdLine     = getFeature('showSqId') && order.squareCustomerId ? `<div class="card-sq-id">SQ: ${esc(order.squareCustomerId)}</div>` : '';
+
+  const wowBadgeAndPanel = buildWowHtml(order);
+
+  const sardilli = getSardelliPO(order);
+  const sardinWarning = sardilli && sardilli.warning ? `<div class="conflict-bar">🐟 ${esc(sardilli.warning)}</div>` : '';
+  const sardinPoLine  = sardilli && sardilli.poNumber && !sardilli.warning ? `<span class="badge" style="background:#d1fae5;color:#065f46">PO #${esc(sardilli.poNumber)}</span>` : '';
 
   const liRows = order.lineItems.map((li, i) => `
     <div class="line-item">
       <div class="li-name">${esc(li.name)}</div>
-      <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"              ${ro} oninput="recomputeCard('${order.id}')">
-      <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}" ${ro} oninput="recomputeCard('${order.id}')">
+      <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"                    ${ro} oninput="recomputeCard('${order.id}')">
+      <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}"   ${ro} oninput="recomputeCard('${order.id}')">
       <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
     </div>`).join('');
 
   const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
     ? `<a class="inv-link" href="${order.squareInvoiceUrl}" target="_blank">↗ View in Square</a>` : '';
+  const dupLink = isDuplicate && order.existingInvoiceUrl
+    ? `<a class="inv-link" href="${order.existingInvoiceUrl}" target="_blank">↗ View existing</a>` : '';
 
   const bodyClass = autoExpand ? 'card-body' : 'card-body closed';
   const toggleTxt = autoExpand ? '▾ Hide items' : '▸ Show items';
@@ -708,7 +856,8 @@ function renderCard(order) {
           <div class="card-email">${esc(order.customerEmail || '—')}</div>
           ${invTitleLine}
           ${sqIdLine}
-          <div class="card-badges">${stopBadge}${bringBadge}${statusBadge}</div>
+          <div class="card-badges">${stopBadge}${bringBadge}${statusBadge}${sardinPoLine}</div>
+          <div class="card-badges" style="margin-top:3px">${wowBadgeAndPanel}</div>
         </div>
         <div class="card-total">
           <div class="card-total-amount" id="hdrTotal-${order.id}">$${order.total.toFixed(2)}</div>
@@ -716,7 +865,9 @@ function renderCard(order) {
         </div>
       </div>
       ${order.squareConflict ? `<div class="conflict-bar">⚠️ ${esc(order.squareConflict)}</div>` : ''}
-      ${isError ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
+      ${sardinWarning}
+      ${isError     ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
+      ${isDuplicate ? `<div class="conflict-bar">⚠ ${esc(order.error || '')} ${dupLink}</div>` : ''}
       <button class="card-expand-toggle" id="toggle-${order.id}" onclick="toggleExpand('${order.id}')">${toggleTxt}</button>
       <div class="${bodyClass}" id="body-${order.id}">
         <div class="line-items">
@@ -726,7 +877,7 @@ function renderCard(order) {
           ${liRows}
         </div>
         <div class="card-footer">
-          ${invLink}
+          ${invLink}${dupLink}
           <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
           ${hasDfee ? `<span>Delivery fee: <strong>$${order.deliveryFee.toFixed(2)}</strong></span>` : ''}
           <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
@@ -742,7 +893,6 @@ function toggleExpand(id) {
   const closed = body.classList.toggle('closed');
   if (btn) btn.textContent = closed ? '▸ Show items' : '▾ Hide items';
 }
-
 function toggleCard(id) {
   const card = document.getElementById(`card-${id}`);
   const cb   = document.getElementById(`cb-${id}`);
@@ -750,7 +900,6 @@ function toggleCard(id) {
   card.classList.toggle('selected', cb.checked);
   updateToolbar();
 }
-
 function patchCard(order) {
   const el = document.getElementById(`card-${order.id}`);
   if (!el) return;
@@ -766,45 +915,93 @@ function patchCard(order) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Render full orders view
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Render full orders view (4 sections) ────────────────────────────────────────
 function renderOrders() {
   stateEmpty.style.display   = 'none';
   stateLoading.style.display = 'none';
   stateOrders.style.display  = '';
 
+  const pending   = state.orders.filter(o => o.status === 'pending' || o.status === 'duplicate');
+  const drafts    = state.orders.filter(o => o.status === 'drafted');
+  const sent      = state.orders.filter(o => o.status === 'sent');
+  const errors    = state.orders.filter(o => o.status === 'error');
+
   let html = '';
 
-  if (!state.orders.length) {
-    html += `<div class="state-box" style="padding:40px 20px"><p>No invoiceable orders found for this date.</p></div>`;
+  // ── Section 1: Invoices (pending) ──────────────────────────────────────────
+  html += `<div class="section-header">
+    <span class="section-label">Invoices</span>
+    <span class="section-count">${pending.length} pending</span>
+    <div class="section-actions">
+      <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select all</button>
+      <button class="btn btn-sm btn-ghost" onclick="deselectAllSection('pending')">Deselect</button>
+    </div>
+  </div>`;
+
+  if (!pending.length) {
+    html += `<div style="padding:16px;text-align:center;color:#9ca3af;font-size:14px;background:#fff;border-radius:8px;border:1px dashed #e5e7eb">No pending orders${drafts.length ? ' — all drafted!' : '.'}</div>`;
   } else {
-    html += `<div class="section-label">Orders (${state.orders.length})</div><div class="orders-grid">`;
-    state.orders.forEach(o => { html += renderCard(o); });
+    html += `<div class="orders-grid">`;
+    pending.forEach(o => { html += renderCard(o); });
     html += `</div>`;
   }
 
-  if (getFeature('showNotInToday') && state.notInToday.length) {
-    html += `<div class="section-label">Not in today's run — ordered last week</div><div class="mini-list">`;
-    state.notInToday.forEach(c => {
-      const items = c.items.map(i => `${i.qty}× ${i.name}`).join(', ');
-      html += `<div class="mini-card">
-        <div class="mini-card-name">${esc(c.customerName)}</div>
-        <div class="mini-card-detail">Last week: $${(c.lastTotal||0).toFixed(2)}</div>
-        <div class="mini-card-items">${esc(items)}</div>
-      </div>`;
-    });
+  // ── Section 2: Upcoming (not-in-today + skipped) ───────────────────────────
+  if (getFeature('showNotInToday') && (state.notInToday.length || state.skipped.length)) {
+    const upcomingCount = state.notInToday.length + state.skipped.length;
+    html += `<div class="section-header" style="margin-top:32px">
+      <span class="section-label">Upcoming</span>
+      <span class="section-count">${upcomingCount} accounts</span>
+    </div>`;
+
+    if (state.notInToday.length) {
+      html += `<div class="mini-list">`;
+      state.notInToday.forEach(c => {
+        const items = c.items.map(i => `${i.qty}× ${i.name}`).join(', ');
+        html += `<div class="mini-card">
+          <div class="mini-card-name">${esc(c.customerName)} <span style="color:#9ca3af;font-size:12px;font-weight:400">— not in today's run</span></div>
+          <div class="mini-card-detail">Last week: $${(c.lastTotal||0).toFixed(2)}</div>
+          <div class="mini-card-items">${esc(items)}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    if (state.skipped.length) {
+      html += `<div class="mini-list" style="margin-top:8px">`;
+      state.skipped.forEach(s => {
+        html += `<div class="mini-card">
+          <div class="mini-card-name">${esc(s.customerName)} <span style="color:#9ca3af;font-size:12px;font-weight:400">— skipped</span></div>
+          <div class="mini-card-detail">${esc(s.reason)}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  // ── Section 3: Drafts ──────────────────────────────────────────────────────
+  if (drafts.length || errors.length) {
+    html += `<div class="section-header" style="margin-top:32px">
+      <span class="section-label">Drafts</span>
+      <span class="section-count">${drafts.length} ready to send${errors.length ? `, ${errors.length} error` : ''}</span>
+      <div class="section-actions">
+        <button class="btn btn-sm btn-ghost" onclick="selectAllDrafted()">Select all</button>
+        <button class="btn btn-sm btn-ghost" onclick="deselectAllSection('drafted')">Deselect</button>
+      </div>
+    </div>
+    <div class="orders-grid">`;
+    [...drafts, ...errors].forEach(o => { html += renderCard(o); });
     html += `</div>`;
   }
 
-  if (getFeature('showSkipped') && state.skipped.length) {
-    html += `<div class="section-label">Skipped (${state.skipped.length})</div><div class="mini-list">`;
-    state.skipped.forEach(s => {
-      html += `<div class="mini-card">
-        <div class="mini-card-name">${esc(s.customerName)}</div>
-        <div class="mini-card-detail">${esc(s.reason)}</div>
-      </div>`;
-    });
+  // ── Section 4: Sent ────────────────────────────────────────────────────────
+  if (sent.length) {
+    const sentTotal = sent.reduce((s, o) => s + o.total, 0);
+    html += `<div class="section-header" style="margin-top:32px">
+      <span class="section-label">Sent</span>
+      <span class="section-count">${sent.length} invoices · $${sentTotal.toFixed(2)}</span>
+    </div>
+    <div class="orders-grid">`;
+    sent.forEach(o => { html += renderCard(o); });
     html += `</div>`;
   }
 
@@ -814,21 +1011,23 @@ function renderOrders() {
   updateToolbar();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Load orders
-// ─────────────────────────────────────────────────────────────────────────────
+function deselectAllSection(status) {
+  state.orders.filter(o => o.status === status).forEach(o => setChecked(o.id, false));
+  updateToolbar();
+}
+
+// ── Load orders ─────────────────────────────────────────────────────────────────
 document.getElementById('btnLoad').addEventListener('click', async () => {
   if (!picker.value) { showToast('Pick a date first', 'red'); return; }
-  const date = toDisplayFmt(picker.value);
+  const date  = toDisplayFmt(picker.value);
   const rules = getRules();
-
-  // Build query string with active rules
   const params = new URLSearchParams({ date });
   if (rules.skipHomeDelivery === false) params.set('skipHomeDelivery', '0');
   if (rules.skipAlways       === false) params.set('skipAlways', '0');
   if (rules.skipMonthEnd     === false) params.set('skipMonthEnd', '0');
   if (rules.skipAlreadySent  === false) params.set('skipAlreadySent', '0');
   if (rules.deliveryFee      === false) params.set('deliveryFee', '0');
+  if (monthEndMode) params.set('includeMonthEnd', '1');
 
   stateEmpty.style.display   = 'none';
   stateLoading.style.display = '';
@@ -845,9 +1044,10 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
     state.notInToday = data.notInToday || [];
     state.skipped    = data.skipped    || [];
 
+    updateAddressBook(state.orders);
     renderOrders();
     setStatus('', '');
-    showToast(`Loaded ${state.orders.length} orders for ${date}`, 'green');
+    showToast(`Loaded ${state.orders.length} orders for ${date}${monthEndMode ? ' (month-end mode)' : ''}`, 'green');
   } catch (e) {
     stateLoading.style.display = 'none';
     stateEmpty.style.display   = '';
@@ -856,9 +1056,7 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Create Drafts
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Create Drafts ───────────────────────────────────────────────────────────────
 btnDraft.addEventListener('click', () => {
   const sel = selectedOrders().filter(o => o.status === 'pending');
   if (!sel.length) { showToast('No pending orders selected', ''); return; }
@@ -870,21 +1068,20 @@ document.getElementById('btnConfirmDraft').addEventListener('click', async () =>
   closeModal('modalDraft');
   const sel = selectedOrders().filter(o => o.status === 'pending');
   if (!sel.length) return;
-
   setStatus(`Creating ${sel.length} draft${sel.length > 1 ? 's' : ''}…`, 'blue');
   btnDraft.disabled = true;
-
   try {
     const res  = await fetch(`${WORKER_URL}/create-drafts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: sel }) });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
     const data = await res.json();
-
-    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) { state.orders[idx] = u; patchCard(u); } });
+    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) state.orders[idx] = u; });
+    renderOrders();
     const ok  = data.orders.filter(o => o.status === 'drafted').length;
+    const dup = data.orders.filter(o => o.status === 'duplicate').length;
     const err = data.orders.filter(o => o.status === 'error').length;
     setStatus('', '');
-    updateToolbar();
-    showToast(err ? `${ok} draft${ok !== 1?'s':''} created, ${err} error${err !== 1?'s':''}` : `${ok} draft${ok !== 1?'s':''} created — ready to send!`, err ? 'red' : 'green');
+    const msg = [ok ? `${ok} drafted` : '', dup ? `${dup} duplicate` : '', err ? `${err} error` : ''].filter(Boolean).join(', ');
+    showToast(msg || 'Done', err ? 'red' : 'green');
   } catch (e) {
     setStatus('', '');
     showToast('Draft creation failed: ' + e.message, 'red');
@@ -894,9 +1091,7 @@ document.getElementById('btnConfirmDraft').addEventListener('click', async () =>
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Send invoices
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Send invoices ───────────────────────────────────────────────────────────────
 btnSend.addEventListener('click', () => {
   const sel = selectedOrders().filter(o => o.status === 'drafted');
   if (!sel.length) { showToast('No drafted invoices selected', ''); return; }
@@ -908,21 +1103,42 @@ document.getElementById('btnConfirmSend').addEventListener('click', async () => 
   closeModal('modalSend');
   const sel = selectedOrders().filter(o => o.status === 'drafted');
   if (!sel.length) return;
-
   setStatus(`Sending ${sel.length} invoice${sel.length > 1 ? 's' : ''}…`, 'orange');
   btnSend.disabled = true;
-
   try {
     const res  = await fetch(`${WORKER_URL}/send-invoices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: sel }) });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
     const data = await res.json();
+    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) state.orders[idx] = u; });
+    renderOrders();
 
-    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) { state.orders[idx] = u; patchCard(u); } });
-    const ok  = data.orders.filter(o => o.status === 'sent').length;
-    const err = data.orders.filter(o => o.status === 'error').length;
-    setStatus(err === 0 ? 'All invoices sent ✓' : '', 'green');
+    const sentOrders = data.orders.filter(o => o.status === 'sent');
+    const errOrders  = data.orders.filter(o => o.status === 'error');
+    const totalSent  = sentOrders.reduce((s, o) => s + o.total, 0);
+
+    // Update address book with invoice records
+    if (sentOrders.length) updateAddressBookWithInvoices(sentOrders);
+
+    setStatus(errOrders.length === 0 ? 'All invoices sent ✓' : '', 'green');
     updateToolbar();
-    showToast(err ? `${ok} sent, ${err} error${err !== 1?'s':''}` : `${ok} invoice${ok !== 1?'s':''} sent!`, err ? 'red' : 'green');
+
+    // Show completion summary modal
+    document.getElementById('completeSummaryText').innerHTML =
+      `<strong>${sentOrders.length}</strong> invoice${sentOrders.length !== 1 ? 's' : ''} sent · Total: <strong>$${totalSent.toFixed(2)}</strong>` +
+      (errOrders.length ? ` · <span style="color:#dc2626">${errOrders.length} error${errOrders.length !== 1 ? 's' : ''}</span>` : '');
+
+    document.getElementById('completeList').innerHTML =
+      sentOrders.map(o => `<div class="complete-row">
+        <span>✓ ${esc(o.customerName)}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <strong>$${o.total.toFixed(2)}</strong>
+          ${o.squareInvoiceUrl ? `<a href="${esc(o.squareInvoiceUrl)}" target="_blank" class="inv-link">INV #${esc(o.squareInvoiceNumber||'')}</a>` : ''}
+        </span>
+      </div>`).join('') +
+      errOrders.map(o => `<div class="complete-row" style="color:#dc2626"><span>⛔ ${esc(o.customerName)}</span><span style="font-size:12px">${esc(o.error||'')}</span></div>`).join('');
+
+    openModal('modalComplete');
+    showToast(`${sentOrders.length} sent!`, 'green');
   } catch (e) {
     setStatus('', '');
     showToast('Send failed: ' + e.message, 'red');
@@ -932,13 +1148,12 @@ document.getElementById('btnConfirmSend').addEventListener('click', async () => 
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Init
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────────
 loadSettings();
 loadFeatures();
 loadRules();
 loadNotes();
+renderAddressBook();
 </script>
 </body>
 </html>
