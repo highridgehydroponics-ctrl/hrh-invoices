@@ -220,6 +220,15 @@
     .toast.green { background: #16a34a; }
     .toast.red   { background: #dc2626; }
 
+    /* ── Sardilli PO banner ── */
+    .sardilli-banner { background: #fffbeb; border-bottom: 2px solid #fcd34d; padding: 12px 24px; }
+    .sardilli-banner-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .sardilli-banner-label { font-size: 13px; font-weight: 700; color: #92400e; white-space: nowrap; }
+    .sardilli-banner-fields { display: flex; align-items: center; gap: 10px; flex: 1; flex-wrap: wrap; }
+    .sardilli-po-input { padding: 8px 12px; border: 1.5px solid #fcd34d; border-radius: 6px; font-size: 14px; font-weight: 600; background: #fff; color: #111; width: 200px; }
+    .sardilli-po-input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.15); }
+    .sardilli-preview { font-size: 12px; color: #6b7280; font-style: italic; }
+
     @keyframes spin { to { transform: rotate(360deg); } }
 
     @media (max-width: 640px) {
@@ -254,7 +263,7 @@
 
 <!-- ── Tab nav ── -->
 <div class="tab-nav">
-  <button class="tab-btn active" data-tab="orders">📋 Orders</button>
+  <button class="tab-btn active" data-tab="orders">📋 Invoices</button>
   <button class="tab-btn" data-tab="addressbook">📒 Address Book</button>
   <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
   <button class="tab-btn" data-tab="notes">📝 Notes</button>
@@ -278,6 +287,20 @@
   </div>
   <button class="btn btn-draft" id="btnDraft" style="display:none">Create drafts</button>
   <button class="btn btn-send"  id="btnSend"  style="display:none">Send &amp; print</button>
+</div>
+
+<!-- ── Sardilli PO Banner ── -->
+<div id="sardelliPOBanner" class="sardilli-banner" style="display:none">
+  <div class="sardilli-banner-inner">
+    <span class="sardilli-banner-label">🐟 Sardilli PO Number</span>
+    <div class="sardilli-banner-fields">
+      <input type="text" id="sardelliPOInput" class="sardilli-po-input"
+             placeholder="e.g. 00134619"
+             oninput="applySardelliPO()"
+             onblur="applySardelliPO()">
+      <span class="sardilli-preview" id="sardelliPOPreview">Enter PO number to include in invoice title</span>
+    </div>
+  </div>
 </div>
 
 <!-- ── Tab: Orders ── -->
@@ -581,6 +604,7 @@ function renderAddressBook() {
             <code class="ab-sqid">${esc(c.squareCustomerId)}</code>
             <button class="ab-copy" onclick="copyText('${esc(c.squareCustomerId)}')">Copy</button>
           </div>` : ''}
+        <div class="ab-field"><span class="ab-label">Bring invoice</span><span style="font-size:13px">${c.bringInvoice ? '📄 Yes — bring printed invoice' : 'No'}</span></div>
         ${c.lastSeen ? `<div class="ab-field"><span class="ab-label">Last seen</span><span style="font-size:13px">${esc(c.lastSeen)}</span></div>` : ''}
       </div>
       ${c.invoices?.length ? `
@@ -1046,6 +1070,7 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
 
     updateAddressBook(state.orders);
     renderOrders();
+    showSardelliPOBanner();
     setStatus('', '');
     showToast(`Loaded ${state.orders.length} orders for ${date}${monthEndMode ? ' (month-end mode)' : ''}`, 'green');
   } catch (e) {
@@ -1147,6 +1172,40 @@ document.getElementById('btnConfirmSend').addEventListener('click', async () => 
     updateToolbar();
   }
 });
+
+// ── Sardilli PO banner ─────────────────────────────────────────────────────────────
+function showSardelliPOBanner() {
+  const sardilli = state.orders.find(o => o.customerName.toLowerCase().includes('sardilli'));
+  const banner = document.getElementById('sardelliPOBanner');
+  if (!banner) return;
+  if (!sardilli) { banner.style.display = 'none'; return; }
+  banner.style.display = '';
+  // Restore previously typed PO number
+  const saved = localStorage.getItem('sardilli-po-session') || '';
+  const input = document.getElementById('sardelliPOInput');
+  if (input && saved) { input.value = saved; applySardelliPO(); }
+  else updateSardelliPreview(sardilli, saved);
+}
+
+function updateSardelliPreview(order, poNum) {
+  const preview = document.getElementById('sardelliPOPreview');
+  if (!preview || !order) return;
+  const baseDate = (order.invoiceTitle || '').split(' Invoice')[0];
+  preview.textContent = poNum
+    ? `Invoice title will be: "${baseDate} Invoice - PO #${poNum}"`
+    : 'Enter PO # to include it in the invoice title';
+}
+
+function applySardelliPO() {
+  const poNum = (document.getElementById('sardelliPOInput')?.value || '').trim();
+  localStorage.setItem('sardilli-po-session', poNum);
+  const sardilli = state.orders.find(o => o.customerName.toLowerCase().includes('sardilli'));
+  if (!sardilli) return;
+  const baseDate = (sardilli.invoiceTitle || '').split(' - PO')[0].split(' Invoice')[0];
+  sardilli.invoiceTitle = poNum ? `${baseDate} Invoice - PO #${poNum}` : `${baseDate} Invoice`;
+  updateSardelliPreview(sardilli, poNum);
+  patchCard(sardilli);
+}
 
 // ── Init ─────────────────────────────────────────────────────────────────────────
 loadSettings();
