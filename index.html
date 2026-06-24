@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRH · Invoice Run</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+      background: #f4f4f2;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e4e4e0;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a5c35;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-sub {
+      font-size: 13px;
+      font-weight: 400;
+      color: #888;
+      margin-left: 10px;
+    }
+
+    .header-right {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    /* ── Layout ─────────────────────────────────────── */
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+    }
+
+    /* ── Run header ─────────────────────────────────── */
+    .run-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e4e4e0;
+    }
+
+    .run-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.02em;
+    }
+
+    .run-sub {
+      font-size: 13px;
+      color: #777;
+      margin-top: 4px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ── Buttons ────────────────────────────────────── */
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      background: #fff;
+      font-size: 13px;
+      color: #444;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.12s;
+    }
+
+    .btn:hover { background: #f5f5f3; }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: #1a5c35;
+      color: #fff;
+      border-color: #1a5c35;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 10px 20px;
+      width: 100%;
+    }
+
+    .btn-primary:hover { background: #164d2c; }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    .btn-copy {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: #f0fdf4;
+      border-color: #86efac;
+      color: #166534;
+    }
+
+    .btn-copy:hover { background: #dcfce7; }
+
+    /* ── Stat cards ─────────────────────────────────── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e4e4e0;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #999;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Order cards ────────────────────────────────── */
+    .orders-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .order-card {
+      background: #fff;
+      border: 1px solid #e4e4e0;
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+      transition: border-color 0.12s, box-shadow 0.12s;
+      user-select: none;
+    }
+
+    .order-card.selected {
+      border-color: #1a5c35;
+      box-shadow: 0 0 0 1px #1a5c3522;
+    }
+
+    .order-card:hover { border-color: #aaa; }
+    .order-card.selected:hover { border-color: #1a5c35; }
+
+    .card-top {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .card-check {
+      margin-top: 2px;
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      accent-color: #1a5c35;
+      cursor: pointer;
+    }
+
+    .card-info { flex: 1; min-width: 0; }
+
+    .card-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #111;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 5px;
+    }
+
+    .card-meta {
+      font-size: 12px;
+      color: #999;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-total {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111;
+    }
+
+    /* ── Badges ─────────────────────────────────────── */
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 600;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
+    }
+
+    .badge-new     { background: #dbeafe; color: #1e40af; }
+    .badge-same    { background: #dcfce7; color: #15803d; }
+    .badge-changed { background: #fef9c3; color: #854d0e; }
+    .badge-bring   { background: #d1fae5; color: #065f46; }
+
+    /* ── Expand button ──────────────────────────────── */
+    .expand-btn {
+      font-size: 12px;
+      color: #999;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: inherit;
+      transition: background 0.1s;
+    }
+
+    .expand-btn:hover { background: #f5f5f3; color: #444; }
+
+    /* ── Line items ─────────────────────────────────── */
+    .line-items {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #f0f0ee;
+    }
+
+    .line-items table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .line-items td {
+      padding: 3px 0;
+      font-size: 12px;
+      color: #777;
+    }
+
+    .line-items td:first-child { width: 55%; }
+    .line-items td:nth-child(2) { text-align: center; width: 15%; }
+    .line-items td:last-child { text-align: right; width: 30%; }
+
+    .fee-row td { color: #aaa; font-style: italic; }
+
+    /* ── Not in today ───────────────────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+
+    .not-in-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .not-in-card {
+      background: #fafaf8;
+      border: 1px solid #e4e4e0;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .not-in-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+
+    .not-in-name  { font-size: 13px; font-weight: 600; color: #444; }
+    .not-in-total { font-size: 13px; color: #777; font-weight: 500; }
+    .not-in-items { font-size: 12px; color: #aaa; line-height: 1.5; }
+    .not-in-note  { font-size: 11px; color: #bbb; margin-top: 3px; font-style: italic; }
+
+    /* ── CTA section ────────────────────────────────── */
+    .cta-section {
+      background: #fff;
+      border: 1px solid #e4e4e0;
+      border-radius: 14px;
+      padding: 22px;
+      margin-top: 28px;
+    }
+
+    .cta-title { font-size: 16px; font-weight: 700; color: #111; margin-bottom: 4px; }
+    .cta-sub   { font-size: 13px; color: #888; margin-bottom: 18px; }
+
+    .payload-area {
+      display: none;
+      margin-top: 18px;
+    }
+
+    .payload-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .payload-area textarea {
+      flex: 1;
+      font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+      font-size: 11px;
+      padding: 10px 12px;
+      border: 1px solid #e0e0dc;
+      border-radius: 8px;
+      background: #fafaf8;
+      color: #444;
+      resize: none;
+      line-break: anywhere;
+    }
+
+    .payload-tip {
+      font-size: 13px;
+      color: #166534;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    /* ── Skipped section ────────────────────────────── */
+    .skipped-section {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid #e4e4e0;
+    }
+
+    .skipped-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .skipped-chip {
+      font-size: 12px;
+      background: #fafaf8;
+      border: 1px solid #e4e4e0;
+      border-radius: 99px;
+      padding: 4px 12px;
+      color: #aaa;
+    }
+
+    /* ── Empty / loading states ─────────────────────── */
+    .state-box {
+      text-align: center;
+      padding: 80px 20px;
+    }
+
+    .state-box h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .state-box p { font-size: 14px; color: #aaa; }
+
+    /* ── Footer ─────────────────────────────────────── */
+    footer {
+      border-top: 1px solid #e4e4e0;
+      padding: 16px 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #bbb;
+      background: #fff;
+    }
+
+    /* ── Responsive ─────────────────────────────────── */
+    @media (max-width: 640px) {
+      .stats          { grid-template-columns: 1fr 1fr; }
+      .orders-grid    { grid-template-columns: 1fr; }
+      .not-in-grid    { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <span class="logo">High Ridge Hydroponics</span>
+    <span class="logo-sub">Invoice Dashboard</span>
+  </div>
+  <div class="header-right" id="last-updated">Loading…</div>
+</header>
+
+<main>
+  <div id="app">
+    <div class="state-box">
+      <h2>Loading invoice data…</h2>
+      <p>Fetching the latest run from data.json</p>
+    </div>
+  </div>
+</main>
+
+<footer>High Ridge Hydroponics &middot; Invoice run dashboard &middot; Data pushed by Claude</footer>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let ORDERS = [];
+let NOT_IN_TODAY = [];
+let SKIPPED = [];
+let TARGET_DATE = null;
+const selected = new Set();
+const expanded = new Set();
+
+// ─── Data fetch ───────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    // Cache-bust so we always get the latest version Claude pushed
+    const res = await fetch('data.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    TARGET_DATE  = data.targetDate  || null;
+    ORDERS       = data.orders      || [];
+    NOT_IN_TODAY = data.notInToday  || [];
+    SKIPPED      = data.skipped     || [];
+
+    // Default: select all orders
+    ORDERS.forEach(o => selected.add(o.id));
+
+    // Header timestamp
+    const ts = document.getElementById('last-updated');
+    if (data.generatedAt) {
+      const d = new Date(data.generatedAt);
+      ts.textContent = 'Updated ' + d.toLocaleString('en-US', {
+        month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit'
+      });
+    } else {
+      ts.textContent = '';
+    }
+
+    render();
+  } catch (e) {
+    document.getElementById('app').innerHTML = `
+      <div class="state-box">
+        <h2>No invoice data yet</h2>
+        <p>Ask Claude to run the invoice skill — this page will populate automatically once it does.</p>
+      </div>`;
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(n) {
+  return '$' + Number(n).toFixed(2);
+}
+
+function selTotal() {
+  return ORDERS.filter(o => selected.has(o.id)).reduce((s, o) => s + Number(o.total), 0);
+}
+
+function diffBadge(d) {
+  if (d === 'new_customer') return '<span class="badge badge-new">New</span>';
+  if (d === 'changed')      return '<span class="badge badge-changed">Changed</span>';
+  return '<span class="badge badge-same">Same</span>';
+}
+
+// ─── Full render ──────────────────────────────────────────────────────────────
+function render() {
+  if (!ORDERS.length && !NOT_IN_TODAY.length && !SKIPPED.length) {
+    document.getElementById('app').innerHTML = `
+      <div class="state-box">
+        <h2>No orders for this date</h2>
+        <p>Run the invoice skill in Cowork to populate this dashboard.</p>
+      </div>`;
+    return;
+  }
+
+  const newCount  = ORDERS.filter(o => o.diff === 'new_customer').length;
+  const total     = selTotal();
+  const selCount  = selected.size;
+
+  document.getElementById('app').innerHTML = `
+
+    <div class="run-header">
+      <div>
+        <div class="run-title">${TARGET_DATE ? TARGET_DATE + ' — invoice run' : 'Invoice run'}</div>
+        <div class="run-sub" id="run-sub">${selCount} of ${ORDERS.length} selected &middot; ${fmt(total)}</div>
+      </div>
+      <div class="controls">
+        <button class="btn" onclick="toggleAll(true)">Select all</button>
+        <button class="btn" onclick="toggleAll(false)">Deselect all</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Orders</div>
+        <div class="stat-value" id="stat-count">${selCount}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Revenue</div>
+        <div class="stat-value" id="stat-rev">${fmt(total)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">New this week</div>
+        <div class="stat-value">${newCount}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Not in run</div>
+        <div class="stat-value">${NOT_IN_TODAY.length}</div>
+      </div>
+    </div>
+
+    <div class="orders-grid" id="orders-grid"></div>
+
+    ${NOT_IN_TODAY.length ? `
+    <div style="margin-bottom: 28px">
+      <div class="section-label">Not in today's run</div>
+      <div class="not-in-grid">
+        ${NOT_IN_TODAY.map(n => `
+          <div class="not-in-card">
+            <div class="not-in-header">
+              <span class="not-in-name">${n.customerName}</span>
+              <span class="not-in-total">${fmt(n.lastTotal)}</span>
+            </div>
+            <div class="not-in-items">${n.items.map(i => i.name + ' ×' + i.qty).join(', ')}</div>
+            ${n.note ? `<div class="not-in-note">${n.note}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="cta-section">
+      <div class="cta-title">Ready to create drafts?</div>
+      <div class="cta-sub">Review and deselect any orders you want to skip, then generate the Claude prompt below. Copy it and paste it into Cowork to create the Square draft invoices.</div>
+      <button class="btn btn-primary" id="create-btn" onclick="buildPayload()">Generate Claude prompt ↗</button>
+      <div class="payload-area" id="payload-area">
+        <div class="payload-box">
+          <textarea id="payload-text" rows="3" readonly onclick="this.select()"></textarea>
+          <button class="btn btn-copy" onclick="copyPayload()">Copy</button>
+        </div>
+        <div class="payload-tip">
+          Copy the text above, then paste it into the Cowork chat. Claude will create the Square draft invoices for the selected orders.
+        </div>
+      </div>
+    </div>
+
+    ${SKIPPED.length ? `
+    <div class="skipped-section">
+      <div class="section-label">Skipped this run</div>
+      <div class="skipped-grid">
+        ${SKIPPED.map(s => `<span class="skipped-chip">${s.customerName} — ${s.reason}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+  `;
+
+  renderCards();
+}
+
+// ─── Order cards ──────────────────────────────────────────────────────────────
+function renderCards() {
+  const grid = document.getElementById('orders-grid');
+  if (!grid) return;
+
+  grid.innerHTML = ORDERS.map(o => {
+    const sel = selected.has(o.id);
+    const exp = expanded.has(o.id);
+    const stop = (o.stopNum !== null && o.stopNum !== undefined)
+      ? 'Stop ' + o.stopNum
+      : 'No stop #';
+
+    const itemRows = o.lineItems.map(li => `
+      <tr>
+        <td>${li.name}</td>
+        <td>×${li.qty}</td>
+        <td>${fmt(li.total)}</td>
+      </tr>`).join('');
+
+    const feeRow = o.deliveryFee > 0
+      ? `<tr class="fee-row"><td colspan="2">Delivery fee</td><td>${fmt(o.deliveryFee)}</td></tr>`
+      : '';
+
+    return `
+      <div class="order-card ${sel ? 'selected' : ''}" id="card-${o.id}" onclick="toggleOrder('${o.id}')">
+        <div class="card-top">
+          <input type="checkbox" class="card-check" id="chk-${o.id}" ${sel ? 'checked' : ''}
+            onclick="event.stopPropagation(); toggleOrder('${o.id}')">
+          <div class="card-info">
+            <div class="card-name">
+              ${o.customerName}
+              ${diffBadge(o.diff)}
+              ${o.bringInvoice ? '<span class="badge badge-bring">Bring</span>' : ''}
+            </div>
+            <div class="card-meta">${stop} &middot; ${o.customerEmail}</div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('${o.id}')">
+            ${o.lineItems.length} item${o.lineItems.length !== 1 ? 's' : ''} ${exp ? '▲' : '▼'}
+          </button>
+          <span class="card-total">${fmt(o.total)}</span>
+        </div>
+        ${exp ? `
+        <div class="line-items" onclick="event.stopPropagation()">
+          <table><tbody>${itemRows}${feeRow}</tbody></table>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+// ─── Interactions ─────────────────────────────────────────────────────────────
+function toggleOrder(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+
+  const card = document.getElementById('card-' + id);
+  const chk  = document.getElementById('chk-' + id);
+  if (card) card.classList.toggle('selected', selected.has(id));
+  if (chk)  chk.checked = selected.has(id);
+  updateStats();
+}
+
+function toggleExpand(id) {
+  if (expanded.has(id)) expanded.delete(id);
+  else expanded.add(id);
+  renderCards();
+}
+
+function toggleAll(val) {
+  if (val) ORDERS.forEach(o => selected.add(o.id));
+  else selected.clear();
+  renderCards();
+  updateStats();
+}
+
+function updateStats() {
+  const total = selTotal();
+  const sub   = document.getElementById('run-sub');
+  const sc    = document.getElementById('stat-count');
+  const sr    = document.getElementById('stat-rev');
+  const btn   = document.getElementById('create-btn');
+
+  if (sub) sub.textContent = `${selected.size} of ${ORDERS.length} selected · ${fmt(total)}`;
+  if (sc)  sc.textContent  = selected.size;
+  if (sr)  sr.textContent  = fmt(total);
+  if (btn) btn.disabled    = selected.size === 0;
+
+  // Clear payload if selection changes after it was generated
+  const area = document.getElementById('payload-area');
+  if (area) area.style.display = 'none';
+}
+
+function buildPayload() {
+  const sel = ORDERS.filter(o => selected.has(o.id));
+  if (!sel.length) return;
+
+  const payload = { targetDate: TARGET_DATE, orders: sel };
+  const prompt  = 'CREATE_SQUARE_DRAFTS payload:' + encodeURIComponent(JSON.stringify(payload));
+
+  const area = document.getElementById('payload-area');
+  const ta   = document.getElementById('payload-text');
+  if (area) area.style.display = 'block';
+  if (ta)   { ta.value = prompt; ta.select(); }
+
+  // Scroll into view
+  if (area) area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyPayload() {
+  const ta = document.getElementById('payload-text');
+  if (!ta) return;
+  ta.select();
+  navigator.clipboard.writeText(ta.value).catch(() => document.execCommand('copy'));
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  btn.style.background = '#dcfce7';
+  setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+
+</body>
+</html>
