@@ -1,723 +1,766 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HRH · Invoice Run</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HRH Invoice Dashboard</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
-      background: #f4f4f2;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7f5;
       color: #1a1a1a;
       min-height: 100vh;
     }
 
-    /* ── Header ─────────────────────────────────────── */
-    header {
-      background: #fff;
-      border-bottom: 1px solid #e4e4e0;
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .logo {
-      font-size: 15px;
-      font-weight: 700;
-      color: #1a5c35;
-      letter-spacing: -0.02em;
-    }
-
-    .logo-sub {
-      font-size: 13px;
-      font-weight: 400;
-      color: #888;
-      margin-left: 10px;
-    }
-
-    .header-right {
-      font-size: 12px;
-      color: #aaa;
-    }
-
-    /* ── Layout ─────────────────────────────────────── */
-    main {
-      max-width: 920px;
-      margin: 0 auto;
-      padding: 28px 20px 60px;
-    }
-
-    /* ── Run header ─────────────────────────────────── */
-    .run-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #e4e4e0;
-    }
-
-    .run-title {
-      font-size: 22px;
-      font-weight: 700;
-      color: #111;
-      letter-spacing: -0.02em;
-    }
-
-    .run-sub {
-      font-size: 13px;
-      color: #777;
-      margin-top: 4px;
-    }
-
-    .controls {
-      display: flex;
-      gap: 8px;
-    }
-
-    /* ── Buttons ────────────────────────────────────── */
-    .btn {
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      background: #fff;
-      font-size: 13px;
-      color: #444;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 0.12s;
-    }
-
-    .btn:hover { background: #f5f5f3; }
-    .btn:active { transform: scale(0.98); }
-
-    .btn-primary {
+    /* Header */
+    .header {
       background: #1a5c35;
       color: #fff;
-      border-color: #1a5c35;
-      font-weight: 600;
-      font-size: 14px;
-      padding: 10px 20px;
-      width: 100%;
-    }
-
-    .btn-primary:hover { background: #164d2c; }
-    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-
-    .btn-copy {
-      padding: 6px 12px;
-      font-size: 12px;
-      background: #f0fdf4;
-      border-color: #86efac;
-      color: #166534;
-    }
-
-    .btn-copy:hover { background: #dcfce7; }
-
-    /* ── Stat cards ─────────────────────────────────── */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
       gap: 12px;
-      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
     }
+    .header-title { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+    .header-sub   { font-size: 13px; opacity: .75; margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 
-    .stat-card {
-      background: #fff;
-      border: 1px solid #e4e4e0;
-      border-radius: 10px;
-      padding: 14px 16px;
-    }
-
-    .stat-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #999;
-      margin-bottom: 5px;
-      font-weight: 500;
-    }
-
-    .stat-value {
-      font-size: 26px;
-      font-weight: 700;
-      color: #111;
-      letter-spacing: -0.02em;
-    }
-
-    /* ── Order cards ────────────────────────────────── */
-    .orders-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 28px;
-    }
-
-    .order-card {
-      background: #fff;
-      border: 1px solid #e4e4e0;
-      border-radius: 12px;
-      padding: 14px;
+    /* Date row */
+    .date-row { display: flex; align-items: center; gap: 8px; }
+    .date-row label { font-size: 13px; color: #fff; opacity: .85; white-space: nowrap; }
+    .date-row input[type="date"] {
+      padding: 7px 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      background: rgba(255,255,255,.15);
+      color: #fff;
       cursor: pointer;
-      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .date-row input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-load    { background: rgba(255,255,255,.2); color: #fff; border: 1.5px solid rgba(255,255,255,.4); }
+    .btn-load:hover:not(:disabled)   { background: rgba(255,255,255,.3); }
+    .btn-draft   { background: #fff; color: #1a5c35; }
+    .btn-draft:hover:not(:disabled)  { background: #e8f5ee; }
+    .btn-send    { background: #d97706; color: #fff; }
+    .btn-send:hover:not(:disabled)   { background: #b45309; }
+    .btn-cancel  { background: #fff; color: #666; border: 1.5px solid #d1d5db; }
+    .btn-cancel:hover:not(:disabled) { background: #f9fafb; }
+    .btn-confirm      { background: #dc2626; color: #fff; }
+    .btn-confirm-send { background: #d97706; color: #fff; }
+
+    /* Toolbar */
+    .toolbar {
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      min-height: 56px;
+    }
+    .toolbar-stat { font-size: 13px; color: #6b7280; }
+    .toolbar-stat strong { color: #111; }
+    .toolbar-spacer { flex: 1; }
+
+    /* Status dot */
+    .run-status { display: none; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    .run-status.visible { display: flex; }
+    .run-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 1.2s infinite; }
+    .run-dot.blue   { background: #3b82f6; }
+    .run-dot.orange { background: #d97706; }
+    .run-dot.green  { background: #16a34a; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* Main layout */
+    .main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+
+    /* States */
+    .state-box { text-align: center; padding: 60px 20px; color: #9ca3af; }
+    .state-box svg { margin-bottom: 12px; opacity: .5; }
+    .state-box p { font-size: 15px; }
+
+    /* Section labels */
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin: 20px 0 10px;
+    }
+
+    /* Order grid */
+    .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+
+    /* Card */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      border: 2px solid #e5e7eb;
+      overflow: hidden;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .card.selected       { border-color: #1a5c35; box-shadow: 0 0 0 3px rgba(26,92,53,.12); }
+    .card.has-conflict   { border-color: #f59e0b; }
+    .card.status-drafted { border-color: #3b82f6; }
+    .card.status-sent    { border-color: #16a34a; }
+    .card.status-error   { border-color: #dc2626; }
+
+    .card-header {
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
       user-select: none;
     }
-
-    .order-card.selected {
-      border-color: #1a5c35;
-      box-shadow: 0 0 0 1px #1a5c3522;
-    }
-
-    .order-card:hover { border-color: #aaa; }
-    .order-card.selected:hover { border-color: #1a5c35; }
-
-    .card-top {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      margin-bottom: 10px;
-    }
-
-    .card-check {
+    .card-checkbox {
       margin-top: 2px;
       flex-shrink: 0;
-      width: 16px;
-      height: 16px;
-      accent-color: #1a5c35;
+      width: 17px;
+      height: 17px;
       cursor: pointer;
+      accent-color: #1a5c35;
+    }
+    .card-meta { flex: 1; min-width: 0; }
+    .card-name { font-size: 15px; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-email { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .card-badges { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+    .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
+    .badge-stop    { background: #f3f4f6; color: #374151; }
+    .badge-bring   { background: #fef9c3; color: #854d0e; }
+    .badge-sent    { background: #d1fae5; color: #065f46; }
+    .badge-drafted { background: #dbeafe; color: #1e40af; }
+    .badge-error   { background: #fee2e2; color: #991b1b; }
+    .card-total { text-align: right; flex-shrink: 0; }
+    .card-total-amount { font-size: 17px; font-weight: 800; color: #1a5c35; }
+    .card-total-label  { font-size: 11px; color: #9ca3af; }
+
+    /* Conflict / error bars */
+    .conflict-bar {
+      background: #fffbeb;
+      border-top: 1px solid #fde68a;
+      padding: 8px 14px;
+      font-size: 12px;
+      color: #92400e;
+    }
+    .card-error {
+      background: #fef2f2;
+      border-top: 1px solid #fca5a5;
+      padding: 8px 14px;
+      font-size: 12px;
+      color: #991b1b;
     }
 
-    .card-info { flex: 1; min-width: 0; }
-
-    .card-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: #111;
+    /* Line items */
+    .card-body { display: none; border-top: 1px solid #f3f4f6; }
+    .card-body.open { display: block; }
+    .line-items { padding: 10px 14px; }
+    .line-item {
+      display: grid;
+      grid-template-columns: 1fr 68px 80px 72px;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      padding: 5px 0;
+      border-bottom: 1px solid #f9fafb;
+    }
+    .line-item:last-child { border-bottom: none; }
+    .li-name  { color: #374151; font-weight: 500; }
+    .li-qty, .li-price {
+      border: 1px solid #e5e7eb;
+      border-radius: 5px;
+      padding: 3px 6px;
+      font-size: 13px;
+      width: 100%;
+      text-align: right;
+      background: #f9fafb;
+    }
+    .li-qty:focus, .li-price:focus { outline: none; border-color: #1a5c35; background: #fff; }
+    .li-total { font-weight: 600; color: #111; text-align: right; }
+    .card-footer {
+      padding: 8px 14px 10px;
+      background: #fafafa;
+      border-top: 1px solid #f3f4f6;
       display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+      font-size: 12px;
+      color: #6b7280;
       flex-wrap: wrap;
-      align-items: center;
-      gap: 5px;
-      margin-bottom: 5px;
     }
-
-    .card-meta {
+    .card-footer strong { color: #111; }
+    .card-expand-toggle {
+      padding: 6px 14px;
       font-size: 12px;
-      color: #999;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .card-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .card-total {
-      font-size: 16px;
-      font-weight: 700;
-      color: #111;
-    }
-
-    /* ── Badges ─────────────────────────────────────── */
-    .badge {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 99px;
-      font-weight: 600;
-      white-space: nowrap;
-      letter-spacing: 0.01em;
-    }
-
-    .badge-new     { background: #dbeafe; color: #1e40af; }
-    .badge-same    { background: #dcfce7; color: #15803d; }
-    .badge-changed { background: #fef9c3; color: #854d0e; }
-    .badge-bring   { background: #d1fae5; color: #065f46; }
-
-    /* ── Expand button ──────────────────────────────── */
-    .expand-btn {
-      font-size: 12px;
-      color: #999;
+      color: #6b7280;
       background: none;
       border: none;
+      border-top: 1px solid #f3f4f6;
       cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-family: inherit;
-      transition: background 0.1s;
-    }
-
-    .expand-btn:hover { background: #f5f5f3; color: #444; }
-
-    /* ── Line items ─────────────────────────────────── */
-    .line-items {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid #f0f0ee;
-    }
-
-    .line-items table {
       width: 100%;
-      border-collapse: collapse;
+      text-align: left;
     }
-
-    .line-items td {
-      padding: 3px 0;
+    .card-expand-toggle:hover { background: #fafafa; color: #1a5c35; }
+    .inv-link {
       font-size: 12px;
-      color: #777;
+      color: #3b82f6;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
     }
+    .inv-link:hover { text-decoration: underline; }
 
-    .line-items td:first-child { width: 55%; }
-    .line-items td:nth-child(2) { text-align: center; width: 15%; }
-    .line-items td:last-child { text-align: right; width: 30%; }
+    /* Mini cards */
+    .mini-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .mini-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+    .mini-card-name   { font-weight: 600; color: #374151; }
+    .mini-card-detail { color: #6b7280; font-size: 12px; margin-top: 3px; }
+    .mini-card-items  { margin-top: 4px; color: #9ca3af; font-size: 11px; }
 
-    .fee-row td { color: #aaa; font-style: italic; }
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 28px; max-width: 440px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .modal p  { font-size: 14px; color: #4b5563; line-height: 1.5; }
+    .modal-list { margin: 12px 0; max-height: 200px; overflow-y: auto; font-size: 13px; color: #374151; border: 1px solid #e5e7eb; border-radius: 7px; padding: 10px 14px; line-height: 1.9; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
-    /* ── Not in today ───────────────────────────────── */
-    .section-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #aaa;
-      margin-bottom: 10px;
-    }
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #111; color: #fff; padding: 12px 18px; border-radius: 8px; font-size: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.3); z-index: 200; opacity: 0; transform: translateY(10px); transition: opacity .2s, transform .2s; pointer-events: none; }
+    .toast.show  { opacity: 1; transform: translateY(0); }
+    .toast.green { background: #16a34a; }
+    .toast.red   { background: #dc2626; }
 
-    .not-in-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .not-in-card {
-      background: #fafaf8;
-      border: 1px solid #e4e4e0;
-      border-radius: 10px;
-      padding: 12px 14px;
-    }
-
-    .not-in-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 4px;
-    }
-
-    .not-in-name  { font-size: 13px; font-weight: 600; color: #444; }
-    .not-in-total { font-size: 13px; color: #777; font-weight: 500; }
-    .not-in-items { font-size: 12px; color: #aaa; line-height: 1.5; }
-    .not-in-note  { font-size: 11px; color: #bbb; margin-top: 3px; font-style: italic; }
-
-    /* ── CTA section ────────────────────────────────── */
-    .cta-section {
-      background: #fff;
-      border: 1px solid #e4e4e0;
-      border-radius: 14px;
-      padding: 22px;
-      margin-top: 28px;
-    }
-
-    .cta-title { font-size: 16px; font-weight: 700; color: #111; margin-bottom: 4px; }
-    .cta-sub   { font-size: 13px; color: #888; margin-bottom: 18px; }
-
-    .payload-area {
-      display: none;
-      margin-top: 18px;
-    }
-
-    .payload-box {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .payload-area textarea {
-      flex: 1;
-      font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
-      font-size: 11px;
-      padding: 10px 12px;
-      border: 1px solid #e0e0dc;
-      border-radius: 8px;
-      background: #fafaf8;
-      color: #444;
-      resize: none;
-      line-break: anywhere;
-    }
-
-    .payload-tip {
-      font-size: 13px;
-      color: #166534;
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      border-radius: 8px;
-      padding: 10px 14px;
-    }
-
-    /* ── Skipped section ────────────────────────────── */
-    .skipped-section {
-      margin-top: 28px;
-      padding-top: 20px;
-      border-top: 1px solid #e4e4e0;
-    }
-
-    .skipped-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .skipped-chip {
-      font-size: 12px;
-      background: #fafaf8;
-      border: 1px solid #e4e4e0;
-      border-radius: 99px;
-      padding: 4px 12px;
-      color: #aaa;
-    }
-
-    /* ── Empty / loading states ─────────────────────── */
-    .state-box {
-      text-align: center;
-      padding: 80px 20px;
-    }
-
-    .state-box h2 {
-      font-size: 20px;
-      font-weight: 600;
-      color: #555;
-      margin-bottom: 8px;
-    }
-
-    .state-box p { font-size: 14px; color: #aaa; }
-
-    /* ── Footer ─────────────────────────────────────── */
-    footer {
-      border-top: 1px solid #e4e4e0;
-      padding: 16px 24px;
-      text-align: center;
-      font-size: 12px;
-      color: #bbb;
-      background: #fff;
-    }
-
-    /* ── Responsive ─────────────────────────────────── */
     @media (max-width: 640px) {
-      .stats          { grid-template-columns: 1fr 1fr; }
-      .orders-grid    { grid-template-columns: 1fr; }
-      .not-in-grid    { grid-template-columns: 1fr; }
+      .header { padding: 12px 16px; }
+      .main   { padding: 14px 16px; }
+      .toolbar { padding: 10px 16px; }
+      .orders-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-<header>
+<!-- Header -->
+<div class="header">
   <div>
-    <span class="logo">High Ridge Hydroponics</span>
-    <span class="logo-sub">Invoice Dashboard</span>
+    <div class="header-title">🌱 HRH Invoice Dashboard</div>
+    <div class="header-sub">High Ridge Hydroponics</div>
   </div>
-  <div class="header-right" id="last-updated">Loading…</div>
-</header>
+  <div class="header-right">
+    <div class="date-row">
+      <label for="datePicker">Delivery date</label>
+      <input type="date" id="datePicker" />
+    </div>
+    <button class="btn btn-load" id="btnLoad">Load orders</button>
+  </div>
+</div>
 
-<main>
-  <div id="app">
-    <div class="state-box">
-      <h2>Loading invoice data…</h2>
-      <p>Fetching the latest run from data.json</p>
+<!-- Toolbar -->
+<div class="toolbar" id="toolbar" style="display:none">
+  <span class="toolbar-stat" id="statText"></span>
+  <div class="toolbar-spacer"></div>
+  <div class="run-status" id="runStatus">
+    <div class="run-dot blue" id="runDot"></div>
+    <span id="runStatusText"></span>
+  </div>
+  <button class="btn btn-draft" id="btnDraft" style="display:none">Create drafts</button>
+  <button class="btn btn-send"  id="btnSend"  style="display:none">Send &amp; print</button>
+</div>
+
+<!-- Main -->
+<div class="main" id="main">
+  <div class="state-box" id="stateEmpty">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <p>Pick a delivery date and click <strong>Load orders</strong></p>
+  </div>
+  <div class="state-box" id="stateLoading" style="display:none">
+    <div style="margin:0 auto 12px;width:36px;height:36px;border:3px solid #d1fae5;border-top-color:#1a5c35;border-radius:50%;animation:spin .8s linear infinite"></div>
+    <p>Loading orders from AppSheet…</p>
+  </div>
+  <div id="stateOrders" style="display:none"></div>
+</div>
+
+<!-- Modal: Create Drafts -->
+<div class="modal-overlay" id="modalDraft">
+  <div class="modal">
+    <h3>Create draft invoices?</h3>
+    <p>This will create Square draft invoices for the following customers. <strong>No emails sent yet.</strong></p>
+    <div class="modal-list" id="modalDraftList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('modalDraft')">Cancel</button>
+      <button class="btn btn-confirm" id="btnConfirmDraft">Yes, create drafts</button>
     </div>
   </div>
-</main>
+</div>
 
-<footer>High Ridge Hydroponics &middot; Invoice run dashboard &middot; Data pushed by Claude</footer>
+<!-- Modal: Send Invoices -->
+<div class="modal-overlay" id="modalSend">
+  <div class="modal">
+    <h3>Send invoices?</h3>
+    <p>This will <strong>email invoices to customers</strong> and mark them sent in AppSheet. This cannot be undone.</p>
+    <div class="modal-list" id="modalSendList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('modalSend')">Cancel</button>
+      <button class="btn btn-confirm-send" id="btnConfirmSend">Yes, send invoices</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script>
-// ─── State ────────────────────────────────────────────────────────────────────
-let ORDERS = [];
-let NOT_IN_TODAY = [];
-let SKIPPED = [];
-let TARGET_DATE = null;
-const selected = new Set();
-const expanded = new Set();
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG — replace with your Cloudflare Worker URL after deploying
+// ─────────────────────────────────────────────────────────────────────────────
+const WORKER_URL = 'https://aged-mouse-f451.highridgehydroponics.workers.dev';
 
-// ─── Data fetch ───────────────────────────────────────────────────────────────
-async function loadData() {
-  try {
-    // Cache-bust so we always get the latest version Claude pushed
-    const res = await fetch('data.json?t=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+let state = {
+  orders:     [],
+  notInToday: [],
+  skipped:    [],
+};
 
-    TARGET_DATE  = data.targetDate  || null;
-    ORDERS       = data.orders      || [];
-    NOT_IN_TODAY = data.notInToday  || [];
-    SKIPPED      = data.skipped     || [];
-
-    // Default: select all orders
-    ORDERS.forEach(o => selected.add(o.id));
-
-    // Header timestamp
-    const ts = document.getElementById('last-updated');
-    if (data.generatedAt) {
-      const d = new Date(data.generatedAt);
-      ts.textContent = 'Updated ' + d.toLocaleString('en-US', {
-        month: 'short', day: 'numeric',
-        hour: 'numeric', minute: '2-digit'
-      });
-    } else {
-      ts.textContent = '';
-    }
-
-    render();
-  } catch (e) {
-    document.getElementById('app').innerHTML = `
-      <div class="state-box">
-        <h2>No invoice data yet</h2>
-        <p>Ask Claude to run the invoice skill — this page will populate automatically once it does.</p>
-      </div>`;
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// Date helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function nextThursday() {
+  const d   = new Date();
+  const diff = (4 - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+function toInputFmt(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function toDisplayFmt(iso) {
+  const [y, m, d] = iso.split('-');
+  return `${m}/${d}/${y}`;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function fmt(n) {
-  return '$' + Number(n).toFixed(2);
+// Init date picker
+const picker = document.getElementById('datePicker');
+picker.value = toInputFmt(nextThursday());
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOM refs
+// ─────────────────────────────────────────────────────────────────────────────
+const toolbar      = document.getElementById('toolbar');
+const statText     = document.getElementById('statText');
+const runStatus    = document.getElementById('runStatus');
+const runDot       = document.getElementById('runDot');
+const runStatusTxt = document.getElementById('runStatusText');
+const btnDraft     = document.getElementById('btnDraft');
+const btnSend      = document.getElementById('btnSend');
+const stateEmpty   = document.getElementById('stateEmpty');
+const stateLoading = document.getElementById('stateLoading');
+const stateOrders  = document.getElementById('stateOrders');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Toast
+// ─────────────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3500);
 }
 
-function selTotal() {
-  return ORDERS.filter(o => selected.has(o.id)).reduce((s, o) => s + Number(o.total), 0);
+// ─────────────────────────────────────────────────────────────────────────────
+// Modal
+// ─────────────────────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HTML escape
+// ─────────────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function diffBadge(d) {
-  if (d === 'new_customer') return '<span class="badge badge-new">New</span>';
-  if (d === 'changed')      return '<span class="badge badge-changed">Changed</span>';
-  return '<span class="badge badge-same">Same</span>';
+// ─────────────────────────────────────────────────────────────────────────────
+// Selected orders
+// ─────────────────────────────────────────────────────────────────────────────
+function selectedOrders() {
+  return state.orders.filter(o => {
+    const cb = document.getElementById(`cb-${o.id}`);
+    return cb && cb.checked;
+  });
 }
 
-// ─── Full render ──────────────────────────────────────────────────────────────
-function render() {
-  if (!ORDERS.length && !NOT_IN_TODAY.length && !SKIPPED.length) {
-    document.getElementById('app').innerHTML = `
-      <div class="state-box">
-        <h2>No orders for this date</h2>
-        <p>Run the invoice skill in Cowork to populate this dashboard.</p>
-      </div>`;
-    return;
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// Run status indicator
+// ─────────────────────────────────────────────────────────────────────────────
+function setStatus(msg, color) {
+  if (!msg) { runStatus.classList.remove('visible'); return; }
+  runStatus.classList.add('visible');
+  runDot.className      = `run-dot ${color}`;
+  runStatusTxt.textContent = msg;
+}
 
-  const newCount  = ORDERS.filter(o => o.diff === 'new_customer').length;
-  const total     = selTotal();
-  const selCount  = selected.size;
+// ─────────────────────────────────────────────────────────────────────────────
+// Toolbar stats + button visibility
+// ─────────────────────────────────────────────────────────────────────────────
+function updateToolbar() {
+  const sel   = selectedOrders();
+  const grand = sel.reduce((s, o) => s + (o.total || 0), 0);
+  statText.innerHTML = `<strong>${sel.length}</strong> of <strong>${state.orders.length}</strong> selected &nbsp;·&nbsp; Total: <strong>$${grand.toFixed(2)}</strong>`;
 
-  document.getElementById('app').innerHTML = `
+  btnDraft.style.display = sel.some(o => o.status === 'pending')  ? '' : 'none';
+  btnSend.style.display  = sel.some(o => o.status === 'drafted') ? '' : 'none';
+}
 
-    <div class="run-header">
-      <div>
-        <div class="run-title">${TARGET_DATE ? TARGET_DATE + ' — invoice run' : 'Invoice run'}</div>
-        <div class="run-sub" id="run-sub">${selCount} of ${ORDERS.length} selected &middot; ${fmt(total)}</div>
-      </div>
-      <div class="controls">
-        <button class="btn" onclick="toggleAll(true)">Select all</button>
-        <button class="btn" onclick="toggleAll(false)">Deselect all</button>
-      </div>
+// ─────────────────────────────────────────────────────────────────────────────
+// Recompute line totals when qty/price edited
+// ─────────────────────────────────────────────────────────────────────────────
+function recomputeCard(orderId) {
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order) return;
+  let sub = 0;
+  order.lineItems.forEach((li, i) => {
+    const qEl = document.getElementById(`qty-${orderId}-${i}`);
+    const pEl = document.getElementById(`price-${orderId}-${i}`);
+    const tEl = document.getElementById(`liTotal-${orderId}-${i}`);
+    if (!qEl) return;
+    li.qty       = parseFloat(qEl.value)   || 0;
+    li.unitPrice = parseFloat(pEl.value)   || 0;
+    li.total     = Math.round(li.qty * li.unitPrice * 100) / 100;
+    if (tEl) tEl.textContent = `$${li.total.toFixed(2)}`;
+    sub += li.total;
+  });
+  order.subtotal = Math.round(sub * 100) / 100;
+  order.total    = Math.round((order.subtotal + order.deliveryFee) * 100) / 100;
+  const sEl = document.getElementById(`sub-${orderId}`);
+  const tEl = document.getElementById(`tot-${orderId}`);
+  const hEl = document.getElementById(`hdrTotal-${orderId}`);
+  if (sEl) sEl.textContent = `$${order.subtotal.toFixed(2)}`;
+  if (tEl) tEl.textContent = `$${order.total.toFixed(2)}`;
+  if (hEl) hEl.textContent = `$${order.total.toFixed(2)}`;
+  updateToolbar();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Render a single card
+// ─────────────────────────────────────────────────────────────────────────────
+function renderCard(order) {
+  const isSent    = order.status === 'sent';
+  const isDrafted = order.status === 'drafted';
+  const isError   = order.status === 'error';
+  const hasDfee   = order.deliveryFee > 0;
+  const ro        = isSent ? 'readonly disabled' : '';
+
+  let cls = 'card';
+  if (!order.squareConflict && order.status === 'pending') cls += ' selected';
+  if (order.squareConflict && order.status === 'pending') cls += ' has-conflict';
+  if (isDrafted) cls += ' status-drafted';
+  if (isSent)    cls += ' status-sent';
+  if (isError)   cls += ' status-error';
+
+  const stopBadge   = order.stopNum !== null ? `<span class="badge badge-stop">Stop ${order.stopNum}</span>` : '';
+  const bringBadge  = order.bringInvoice ? `<span class="badge badge-bring">📄 Print invoice</span>` : '';
+  const statusBadge = isSent    ? `<span class="badge badge-sent">✓ Sent</span>`
+                    : isDrafted ? `<span class="badge badge-drafted">Draft created</span>`
+                    : isError   ? `<span class="badge badge-error">Error</span>` : '';
+
+  const liRows = order.lineItems.map((li, i) => `
+    <div class="line-item">
+      <div class="li-name">${esc(li.name)}</div>
+      <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"              ${ro} oninput="recomputeCard('${order.id}')">
+      <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}" ${ro} oninput="recomputeCard('${order.id}')">
+      <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
     </div>
+  `).join('');
 
-    <div class="stats">
-      <div class="stat-card">
-        <div class="stat-label">Orders</div>
-        <div class="stat-value" id="stat-count">${selCount}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Revenue</div>
-        <div class="stat-value" id="stat-rev">${fmt(total)}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">New this week</div>
-        <div class="stat-value">${newCount}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Not in run</div>
-        <div class="stat-value">${NOT_IN_TODAY.length}</div>
-      </div>
-    </div>
+  const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
+    ? `<a class="inv-link" href="${order.squareInvoiceUrl}" target="_blank">↗ View in Square</a>` : '';
 
-    <div class="orders-grid" id="orders-grid"></div>
-
-    ${NOT_IN_TODAY.length ? `
-    <div style="margin-bottom: 28px">
-      <div class="section-label">Not in today's run</div>
-      <div class="not-in-grid">
-        ${NOT_IN_TODAY.map(n => `
-          <div class="not-in-card">
-            <div class="not-in-header">
-              <span class="not-in-name">${n.customerName}</span>
-              <span class="not-in-total">${fmt(n.lastTotal)}</span>
-            </div>
-            <div class="not-in-items">${n.items.map(i => i.name + ' ×' + i.qty).join(', ')}</div>
-            ${n.note ? `<div class="not-in-note">${n.note}</div>` : ''}
+  return `
+    <div class="${cls}" id="card-${order.id}">
+      <div class="card-header" onclick="toggleExpand('${order.id}')">
+        <input class="card-checkbox" type="checkbox" id="cb-${order.id}"
+               ${!order.squareConflict && order.status === 'pending' ? 'checked' : ''}
+               ${isSent ? 'disabled' : ''}
+               onclick="event.stopPropagation();toggleCard('${order.id}')">
+        <div class="card-meta">
+          <div class="card-name">${esc(order.customerName)}</div>
+          <div class="card-email">${esc(order.customerEmail || '—')}</div>
+          <div class="card-badges">${stopBadge}${bringBadge}${statusBadge}</div>
+        </div>
+        <div class="card-total">
+          <div class="card-total-amount" id="hdrTotal-${order.id}">$${order.total.toFixed(2)}</div>
+          <div class="card-total-label">${order.lineItems.length} item${order.lineItems.length !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      ${order.squareConflict ? `<div class="conflict-bar">⚠️ ${esc(order.squareConflict)}</div>` : ''}
+      ${isError ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
+      <button class="card-expand-toggle" id="toggle-${order.id}" onclick="toggleExpand('${order.id}')">▸ Show items</button>
+      <div class="card-body" id="body-${order.id}">
+        <div class="line-items">
+          <div class="line-item" style="font-size:11px;font-weight:700;color:#9ca3af;border-bottom:1px solid #e5e7eb;padding-bottom:4px">
+            <div>PRODUCT</div><div style="text-align:right">QTY</div><div style="text-align:right">UNIT $</div><div style="text-align:right">TOTAL</div>
           </div>
-        `).join('')}
-      </div>
-    </div>` : ''}
-
-    <div class="cta-section">
-      <div class="cta-title">Ready to create drafts?</div>
-      <div class="cta-sub">Review and deselect any orders you want to skip, then generate the Claude prompt below. Copy it and paste it into Cowork to create the Square draft invoices.</div>
-      <button class="btn btn-primary" id="create-btn" onclick="buildPayload()">Generate Claude prompt ↗</button>
-      <div class="payload-area" id="payload-area">
-        <div class="payload-box">
-          <textarea id="payload-text" rows="3" readonly onclick="this.select()"></textarea>
-          <button class="btn btn-copy" onclick="copyPayload()">Copy</button>
+          ${liRows}
         </div>
-        <div class="payload-tip">
-          Copy the text above, then paste it into the Cowork chat. Claude will create the Square draft invoices for the selected orders.
+        <div class="card-footer">
+          ${invLink}
+          <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
+          ${hasDfee ? `<span>Delivery fee: <strong>$${order.deliveryFee.toFixed(2)}</strong></span>` : ''}
+          <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
         </div>
       </div>
-    </div>
-
-    ${SKIPPED.length ? `
-    <div class="skipped-section">
-      <div class="section-label">Skipped this run</div>
-      <div class="skipped-grid">
-        ${SKIPPED.map(s => `<span class="skipped-chip">${s.customerName} — ${s.reason}</span>`).join('')}
-      </div>
-    </div>` : ''}
-
-  `;
-
-  renderCards();
-}
-
-// ─── Order cards ──────────────────────────────────────────────────────────────
-function renderCards() {
-  const grid = document.getElementById('orders-grid');
-  if (!grid) return;
-
-  grid.innerHTML = ORDERS.map(o => {
-    const sel = selected.has(o.id);
-    const exp = expanded.has(o.id);
-    const stop = (o.stopNum !== null && o.stopNum !== undefined)
-      ? 'Stop ' + o.stopNum
-      : 'No stop #';
-
-    const itemRows = o.lineItems.map(li => `
-      <tr>
-        <td>${li.name}</td>
-        <td>×${li.qty}</td>
-        <td>${fmt(li.total)}</td>
-      </tr>`).join('');
-
-    const feeRow = o.deliveryFee > 0
-      ? `<tr class="fee-row"><td colspan="2">Delivery fee</td><td>${fmt(o.deliveryFee)}</td></tr>`
-      : '';
-
-    return `
-      <div class="order-card ${sel ? 'selected' : ''}" id="card-${o.id}" onclick="toggleOrder('${o.id}')">
-        <div class="card-top">
-          <input type="checkbox" class="card-check" id="chk-${o.id}" ${sel ? 'checked' : ''}
-            onclick="event.stopPropagation(); toggleOrder('${o.id}')">
-          <div class="card-info">
-            <div class="card-name">
-              ${o.customerName}
-              ${diffBadge(o.diff)}
-              ${o.bringInvoice ? '<span class="badge badge-bring">Bring</span>' : ''}
-            </div>
-            <div class="card-meta">${stop} &middot; ${o.customerEmail}</div>
-          </div>
-        </div>
-        <div class="card-bottom">
-          <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('${o.id}')">
-            ${o.lineItems.length} item${o.lineItems.length !== 1 ? 's' : ''} ${exp ? '▲' : '▼'}
-          </button>
-          <span class="card-total">${fmt(o.total)}</span>
-        </div>
-        ${exp ? `
-        <div class="line-items" onclick="event.stopPropagation()">
-          <table><tbody>${itemRows}${feeRow}</tbody></table>
-        </div>` : ''}
-      </div>`;
-  }).join('');
-}
-
-// ─── Interactions ─────────────────────────────────────────────────────────────
-function toggleOrder(id) {
-  if (selected.has(id)) selected.delete(id);
-  else selected.add(id);
-
-  const card = document.getElementById('card-' + id);
-  const chk  = document.getElementById('chk-' + id);
-  if (card) card.classList.toggle('selected', selected.has(id));
-  if (chk)  chk.checked = selected.has(id);
-  updateStats();
+    </div>`;
 }
 
 function toggleExpand(id) {
-  if (expanded.has(id)) expanded.delete(id);
-  else expanded.add(id);
-  renderCards();
+  const body = document.getElementById(`body-${id}`);
+  const btn  = document.getElementById(`toggle-${id}`);
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  if (btn) btn.textContent = open ? '▾ Hide items' : '▸ Show items';
 }
 
-function toggleAll(val) {
-  if (val) ORDERS.forEach(o => selected.add(o.id));
-  else selected.clear();
-  renderCards();
-  updateStats();
+function toggleCard(id) {
+  const card = document.getElementById(`card-${id}`);
+  const cb   = document.getElementById(`cb-${id}`);
+  if (!card || !cb) return;
+  card.classList.toggle('selected', cb.checked);
+  updateToolbar();
 }
 
-function updateStats() {
-  const total = selTotal();
-  const sub   = document.getElementById('run-sub');
-  const sc    = document.getElementById('stat-count');
-  const sr    = document.getElementById('stat-rev');
-  const btn   = document.getElementById('create-btn');
-
-  if (sub) sub.textContent = `${selected.size} of ${ORDERS.length} selected · ${fmt(total)}`;
-  if (sc)  sc.textContent  = selected.size;
-  if (sr)  sr.textContent  = fmt(total);
-  if (btn) btn.disabled    = selected.size === 0;
-
-  // Clear payload if selection changes after it was generated
-  const area = document.getElementById('payload-area');
-  if (area) area.style.display = 'none';
+// Patch a card in-place (preserves open/closed state)
+function patchCard(order) {
+  const el = document.getElementById(`card-${order.id}`);
+  if (!el) return;
+  const wasOpen = document.getElementById(`body-${order.id}`)?.classList.contains('open');
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderCard(order);
+  el.replaceWith(tmp.firstElementChild);
+  if (wasOpen) {
+    const body = document.getElementById(`body-${order.id}`);
+    const btn  = document.getElementById(`toggle-${order.id}`);
+    if (body) body.classList.add('open');
+    if (btn)  btn.textContent = '▾ Hide items';
+  }
 }
 
-function buildPayload() {
-  const sel = ORDERS.filter(o => selected.has(o.id));
+// ─────────────────────────────────────────────────────────────────────────────
+// Render full orders view
+// ─────────────────────────────────────────────────────────────────────────────
+function renderOrders() {
+  stateEmpty.style.display   = 'none';
+  stateLoading.style.display = 'none';
+  stateOrders.style.display  = '';
+
+  let html = '';
+
+  if (!state.orders.length) {
+    html += `<div class="state-box" style="padding:40px 20px"><p>No invoiceable orders found for this date.</p></div>`;
+  } else {
+    html += `<div class="section-label">Orders (${state.orders.length})</div><div class="orders-grid">`;
+    state.orders.forEach(o => { html += renderCard(o); });
+    html += `</div>`;
+  }
+
+  if (state.notInToday.length) {
+    html += `<div class="section-label">Not in today's run — ordered last week</div><div class="mini-list">`;
+    state.notInToday.forEach(c => {
+      const items = c.items.map(i => `${i.qty}× ${i.name}`).join(', ');
+      html += `<div class="mini-card">
+        <div class="mini-card-name">${esc(c.customerName)}</div>
+        <div class="mini-card-detail">Last week: $${(c.lastTotal||0).toFixed(2)}</div>
+        <div class="mini-card-items">${esc(items)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (state.skipped.length) {
+    html += `<div class="section-label">Skipped (${state.skipped.length})</div><div class="mini-list">`;
+    state.skipped.forEach(s => {
+      html += `<div class="mini-card">
+        <div class="mini-card-name">${esc(s.customerName)}</div>
+        <div class="mini-card-detail">${esc(s.reason)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  stateOrders.innerHTML = html;
+  toolbar.style.display = '';
+  updateToolbar();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Load orders
+// ─────────────────────────────────────────────────────────────────────────────
+document.getElementById('btnLoad').addEventListener('click', async () => {
+  if (!picker.value) { showToast('Pick a date first', 'red'); return; }
+  const date = toDisplayFmt(picker.value);
+
+  stateEmpty.style.display   = 'none';
+  stateLoading.style.display = '';
+  stateOrders.style.display  = 'none';
+  toolbar.style.display      = 'none';
+
+  try {
+    const res  = await fetch(`${WORKER_URL}/orders?date=${encodeURIComponent(date)}`);
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
+    const data = await res.json();
+
+    state.orders     = data.orders     || [];
+    state.notInToday = data.notInToday || [];
+    state.skipped    = data.skipped    || [];
+
+    renderOrders();
+    setStatus('', '');
+    showToast(`Loaded ${state.orders.length} orders for ${date}`, 'green');
+  } catch (e) {
+    stateLoading.style.display = 'none';
+    stateEmpty.style.display   = '';
+    stateEmpty.querySelector('p').innerHTML = `<span style="color:#dc2626">Error: ${esc(e.message)}</span>`;
+    showToast('Failed to load orders', 'red');
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Create Drafts
+// ─────────────────────────────────────────────────────────────────────────────
+btnDraft.addEventListener('click', () => {
+  const sel = selectedOrders().filter(o => o.status === 'pending');
+  if (!sel.length) { showToast('No pending orders selected', ''); return; }
+  document.getElementById('modalDraftList').innerHTML =
+    sel.map(o => `• ${esc(o.customerName)} — $${o.total.toFixed(2)}`).join('<br>');
+  openModal('modalDraft');
+});
+
+document.getElementById('btnConfirmDraft').addEventListener('click', async () => {
+  closeModal('modalDraft');
+  const sel = selectedOrders().filter(o => o.status === 'pending');
   if (!sel.length) return;
 
-  const payload = { targetDate: TARGET_DATE, orders: sel };
-  const prompt  = 'CREATE_SQUARE_DRAFTS payload:' + encodeURIComponent(JSON.stringify(payload));
+  setStatus(`Creating ${sel.length} draft${sel.length > 1 ? 's' : ''}…`, 'blue');
+  btnDraft.disabled = true;
 
-  const area = document.getElementById('payload-area');
-  const ta   = document.getElementById('payload-text');
-  if (area) area.style.display = 'block';
-  if (ta)   { ta.value = prompt; ta.select(); }
+  try {
+    const res  = await fetch(`${WORKER_URL}/create-drafts`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ orders: sel }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
+    const data = await res.json();
 
-  // Scroll into view
-  if (area) area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
+    data.orders.forEach(u => {
+      const idx = state.orders.findIndex(o => o.id === u.id);
+      if (idx !== -1) { state.orders[idx] = u; patchCard(u); }
+    });
 
-function copyPayload() {
-  const ta = document.getElementById('payload-text');
-  if (!ta) return;
-  ta.select();
-  navigator.clipboard.writeText(ta.value).catch(() => document.execCommand('copy'));
-  const btn = event.target;
-  const orig = btn.textContent;
-  btn.textContent = 'Copied!';
-  btn.style.background = '#dcfce7';
-  setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
-}
+    const ok  = data.orders.filter(o => o.status === 'drafted').length;
+    const err = data.orders.filter(o => o.status === 'error').length;
+    setStatus('', '');
+    updateToolbar();
+    showToast(
+      err ? `${ok} draft${ok !== 1 ? 's' : ''} created, ${err} error${err !== 1 ? 's' : ''}` :
+            `${ok} draft${ok !== 1 ? 's' : ''} created — ready to send!`,
+      err ? 'red' : 'green'
+    );
+  } catch (e) {
+    setStatus('', '');
+    showToast('Draft creation failed: ' + e.message, 'red');
+  } finally {
+    btnDraft.disabled = false;
+    updateToolbar();
+  }
+});
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-loadData();
+// ─────────────────────────────────────────────────────────────────────────────
+// Send invoices
+// ─────────────────────────────────────────────────────────────────────────────
+btnSend.addEventListener('click', () => {
+  const sel = selectedOrders().filter(o => o.status === 'drafted');
+  if (!sel.length) { showToast('No drafted invoices selected', ''); return; }
+  document.getElementById('modalSendList').innerHTML =
+    sel.map(o => `• ${esc(o.customerName)} — $${o.total.toFixed(2)}`).join('<br>');
+  openModal('modalSend');
+});
+
+document.getElementById('btnConfirmSend').addEventListener('click', async () => {
+  closeModal('modalSend');
+  const sel = selectedOrders().filter(o => o.status === 'drafted');
+  if (!sel.length) return;
+
+  setStatus(`Sending ${sel.length} invoice${sel.length > 1 ? 's' : ''}…`, 'orange');
+  btnSend.disabled = true;
+
+  try {
+    const res  = await fetch(`${WORKER_URL}/send-invoices`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ orders: sel }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
+    const data = await res.json();
+
+    data.orders.forEach(u => {
+      const idx = state.orders.findIndex(o => o.id === u.id);
+      if (idx !== -1) { state.orders[idx] = u; patchCard(u); }
+    });
+
+    const ok  = data.orders.filter(o => o.status === 'sent').length;
+    const err = data.orders.filter(o => o.status === 'error').length;
+    setStatus(err === 0 ? 'All invoices sent ✓' : '', 'green');
+    updateToolbar();
+    showToast(
+      err ? `${ok} sent, ${err} error${err !== 1 ? 's' : ''}` :
+            `${ok} invoice${ok !== 1 ? 's' : ''} sent!`,
+      err ? 'red' : 'green'
+    );
+  } catch (e) {
+    setStatus('', '');
+    showToast('Send failed: ' + e.message, 'red');
+  } finally {
+    btnSend.disabled = false;
+    updateToolbar();
+  }
+});
 </script>
-
 </body>
 </html>
