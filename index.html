@@ -6,57 +6,26 @@
   <title>HRH Invoice Dashboard</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f7f5;
-      color: #1a1a1a;
-      min-height: 100vh;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7f5; color: #1a1a1a; min-height: 100vh; }
 
-    /* Header */
-    .header {
-      background: #1a5c35;
-      color: #fff;
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.2);
-    }
+    /* ── Header ── */
+    .header { background: #1a5c35; color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
     .header-title { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
     .header-sub   { font-size: 13px; opacity: .75; margin-top: 2px; }
     .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-
-    /* Date row */
     .date-row { display: flex; align-items: center; gap: 8px; }
     .date-row label { font-size: 13px; color: #fff; opacity: .85; white-space: nowrap; }
-    .date-row input[type="date"] {
-      padding: 7px 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      background: rgba(255,255,255,.15);
-      color: #fff;
-      cursor: pointer;
-    }
+    .date-row input[type="date"] { padding: 7px 10px; border: none; border-radius: 6px; font-size: 14px; background: rgba(255,255,255,.15); color: #fff; cursor: pointer; }
     .date-row input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 7px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .15s, transform .1s;
-      white-space: nowrap;
-    }
+    /* ── Tab nav ── */
+    .tab-nav { background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; gap: 0; overflow-x: auto; }
+    .tab-btn { padding: 12px 20px; font-size: 13px; font-weight: 600; color: #6b7280; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; transition: color .15s, border-color .15s; }
+    .tab-btn:hover  { color: #1a5c35; }
+    .tab-btn.active { color: #1a5c35; border-bottom-color: #1a5c35; }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; white-space: nowrap; }
     .btn:active { transform: scale(.97); }
     .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
     .btn-load    { background: rgba(255,255,255,.2); color: #fff; border: 1.5px solid rgba(255,255,255,.4); }
@@ -69,23 +38,14 @@
     .btn-cancel:hover:not(:disabled) { background: #f9fafb; }
     .btn-confirm      { background: #dc2626; color: #fff; }
     .btn-confirm-send { background: #d97706; color: #fff; }
+    .btn-save { background: #1a5c35; color: #fff; }
+    .btn-save:hover:not(:disabled) { background: #145228; }
 
-    /* Toolbar */
-    .toolbar {
-      background: #fff;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 12px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      min-height: 56px;
-    }
+    /* ── Toolbar ── */
+    .toolbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 56px; }
     .toolbar-stat { font-size: 13px; color: #6b7280; }
     .toolbar-stat strong { color: #111; }
     .toolbar-spacer { flex: 1; }
-
-    /* Status dot */
     .run-status { display: none; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
     .run-status.visible { display: flex; }
     .run-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 1.2s infinite; }
@@ -94,62 +54,33 @@
     .run-dot.green  { background: #16a34a; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-    /* Main layout */
+    /* ── Main ── */
     .main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
-
-    /* States */
     .state-box { text-align: center; padding: 60px 20px; color: #9ca3af; }
-    .state-box svg { margin-bottom: 12px; opacity: .5; }
     .state-box p { font-size: 15px; }
 
-    /* Section labels */
-    .section-label {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      color: #6b7280;
-      margin: 20px 0 10px;
-    }
+    /* ── Section labels ── */
+    .section-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; margin: 20px 0 10px; }
 
-    /* Order grid */
+    /* ── Orders grid ── */
     .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
 
-    /* Card */
-    .card {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.08);
-      border: 2px solid #e5e7eb;
-      overflow: hidden;
-      transition: border-color .15s, box-shadow .15s;
-    }
+    /* ── Card ── */
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 2px solid #e5e7eb; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
     .card.selected       { border-color: #1a5c35; box-shadow: 0 0 0 3px rgba(26,92,53,.12); }
     .card.has-conflict   { border-color: #f59e0b; }
     .card.status-drafted { border-color: #3b82f6; }
     .card.status-sent    { border-color: #16a34a; }
     .card.status-error   { border-color: #dc2626; }
 
-    .card-header {
-      padding: 12px 14px;
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .card-checkbox {
-      margin-top: 2px;
-      flex-shrink: 0;
-      width: 17px;
-      height: 17px;
-      cursor: pointer;
-      accent-color: #1a5c35;
-    }
+    .card-header { padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; }
+    .card-checkbox { margin-top: 2px; flex-shrink: 0; width: 17px; height: 17px; cursor: pointer; accent-color: #1a5c35; }
     .card-meta { flex: 1; min-width: 0; }
-    .card-name { font-size: 15px; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .card-email { font-size: 12px; color: #6b7280; margin-top: 2px; }
-    .card-badges { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+    .card-name    { font-size: 15px; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-email   { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .card-inv-title { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .card-sq-id   { font-size: 10px; color: #c0c4cc; font-family: monospace; margin-top: 1px; }
+    .card-badges  { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
     .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
     .badge-stop    { background: #f3f4f6; color: #374151; }
     .badge-bring   { background: #fef9c3; color: #854d0e; }
@@ -161,87 +92,66 @@
     .card-total-label  { font-size: 11px; color: #9ca3af; }
 
     /* Conflict / error bars */
-    .conflict-bar {
-      background: #fffbeb;
-      border-top: 1px solid #fde68a;
-      padding: 8px 14px;
-      font-size: 12px;
-      color: #92400e;
-    }
-    .card-error {
-      background: #fef2f2;
-      border-top: 1px solid #fca5a5;
-      padding: 8px 14px;
-      font-size: 12px;
-      color: #991b1b;
-    }
+    .conflict-bar { background: #fffbeb; border-top: 1px solid #fde68a; padding: 8px 14px; font-size: 12px; color: #92400e; }
+    .card-error   { background: #fef2f2; border-top: 1px solid #fca5a5; padding: 8px 14px; font-size: 12px; color: #991b1b; }
 
     /* Line items */
-    .card-body { display: none; border-top: 1px solid #f3f4f6; }
-    .card-body.open { display: block; }
+    .card-body { border-top: 1px solid #f3f4f6; }
+    .card-body.closed { display: none; }
     .line-items { padding: 10px 14px; }
-    .line-item {
-      display: grid;
-      grid-template-columns: 1fr 68px 80px 72px;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      padding: 5px 0;
-      border-bottom: 1px solid #f9fafb;
-    }
+    .line-item { display: grid; grid-template-columns: 1fr 68px 80px 72px; align-items: center; gap: 6px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f9fafb; }
     .line-item:last-child { border-bottom: none; }
     .li-name  { color: #374151; font-weight: 500; }
-    .li-qty, .li-price {
-      border: 1px solid #e5e7eb;
-      border-radius: 5px;
-      padding: 3px 6px;
-      font-size: 13px;
-      width: 100%;
-      text-align: right;
-      background: #f9fafb;
-    }
+    .li-qty, .li-price { border: 1px solid #e5e7eb; border-radius: 5px; padding: 3px 6px; font-size: 13px; width: 100%; text-align: right; background: #f9fafb; }
     .li-qty:focus, .li-price:focus { outline: none; border-color: #1a5c35; background: #fff; }
     .li-total { font-weight: 600; color: #111; text-align: right; }
-    .card-footer {
-      padding: 8px 14px 10px;
-      background: #fafafa;
-      border-top: 1px solid #f3f4f6;
-      display: flex;
-      justify-content: flex-end;
-      gap: 16px;
-      font-size: 12px;
-      color: #6b7280;
-      flex-wrap: wrap;
-    }
+    .card-footer { padding: 8px 14px 10px; background: #fafafa; border-top: 1px solid #f3f4f6; display: flex; justify-content: flex-end; gap: 16px; font-size: 12px; color: #6b7280; flex-wrap: wrap; }
     .card-footer strong { color: #111; }
-    .card-expand-toggle {
-      padding: 6px 14px;
-      font-size: 12px;
-      color: #6b7280;
-      background: none;
-      border: none;
-      border-top: 1px solid #f3f4f6;
-      cursor: pointer;
-      width: 100%;
-      text-align: left;
-    }
+    .card-expand-toggle { padding: 6px 14px; font-size: 12px; color: #6b7280; background: none; border: none; border-top: 1px solid #f3f4f6; cursor: pointer; width: 100%; text-align: left; }
     .card-expand-toggle:hover { background: #fafafa; color: #1a5c35; }
-    .inv-link {
-      font-size: 12px;
-      color: #3b82f6;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-    }
+    .inv-link { font-size: 12px; color: #3b82f6; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
     .inv-link:hover { text-decoration: underline; }
 
-    /* Mini cards */
+    /* Mini cards (not-in-today, skipped) */
     .mini-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
     .mini-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
     .mini-card-name   { font-weight: 600; color: #374151; }
     .mini-card-detail { color: #6b7280; font-size: 12px; margin-top: 3px; }
     .mini-card-items  { margin-top: 4px; color: #9ca3af; font-size: 11px; }
+
+    /* ── Settings / Notes / Features / Rules panels ── */
+    .panel { padding: 24px; max-width: 720px; margin: 0 auto; }
+    .panel h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: #111; }
+    .panel-desc { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .form-group input[type="text"], .form-group select, .form-group textarea {
+      width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; background: #fff; color: #111;
+    }
+    .form-group input[type="text"]:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #1a5c35; box-shadow: 0 0 0 3px rgba(26,92,53,.1); }
+    .form-group textarea { min-height: 240px; resize: vertical; font-family: inherit; line-height: 1.6; }
+    .form-hint { font-size: 12px; color: #9ca3af; margin-top: 5px; }
+
+    /* Toggle rows */
+    .toggle-list { display: flex; flex-direction: column; gap: 1px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+    .toggle-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: #fff; }
+    .toggle-row:not(:last-child) { border-bottom: 1px solid #f3f4f6; }
+    .toggle-row-info { flex: 1; }
+    .toggle-row-label { font-size: 14px; font-weight: 600; color: #111; }
+    .toggle-row-desc  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+    /* Toggle switch */
+    .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: #d1d5db; border-radius: 24px; cursor: pointer; transition: background .2s; }
+    .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+    .toggle-switch input:checked + .toggle-slider { background: #1a5c35; }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* Rule list items */
+    .rule-list { margin-top: 8px; padding: 10px 14px; background: #f9fafb; border-radius: 7px; border: 1px solid #e5e7eb; font-size: 12px; color: #374151; line-height: 1.8; }
+    .rule-list li { list-style: disc; margin-left: 16px; }
 
     /* Modal */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: center; justify-content: center; }
@@ -265,12 +175,13 @@
       .main   { padding: 14px 16px; }
       .toolbar { padding: 10px 16px; }
       .orders-grid { grid-template-columns: 1fr; }
+      .panel { padding: 16px; }
     }
   </style>
 </head>
 <body>
 
-<!-- Header -->
+<!-- ── Header ── -->
 <div class="header">
   <div>
     <div class="header-title">🌱 HRH Invoice Dashboard</div>
@@ -285,7 +196,16 @@
   </div>
 </div>
 
-<!-- Toolbar -->
+<!-- ── Tab nav ── -->
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="orders">📋 Orders</button>
+  <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+  <button class="tab-btn" data-tab="notes">📝 Notes</button>
+  <button class="tab-btn" data-tab="features">🔧 Features</button>
+  <button class="tab-btn" data-tab="rules">📏 Rules</button>
+</div>
+
+<!-- ── Toolbar (Orders tab only) ── -->
 <div class="toolbar" id="toolbar" style="display:none">
   <span class="toolbar-stat" id="statText"></span>
   <div class="toolbar-spacer"></div>
@@ -297,22 +217,200 @@
   <button class="btn btn-send"  id="btnSend"  style="display:none">Send &amp; print</button>
 </div>
 
-<!-- Main -->
-<div class="main" id="main">
-  <div class="state-box" id="stateEmpty">
-    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-    </svg>
-    <p>Pick a delivery date and click <strong>Load orders</strong></p>
+<!-- ── Tab: Orders ── -->
+<div id="tab-orders">
+  <div class="main">
+    <div class="state-box" id="stateEmpty">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:12px;opacity:.4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <p>Pick a delivery date and click <strong>Load orders</strong></p>
+    </div>
+    <div class="state-box" id="stateLoading" style="display:none">
+      <div style="margin:0 auto 12px;width:36px;height:36px;border:3px solid #d1fae5;border-top-color:#1a5c35;border-radius:50%;animation:spin .8s linear infinite"></div>
+      <p>Loading orders from AppSheet…</p>
+    </div>
+    <div id="stateOrders" style="display:none"></div>
   </div>
-  <div class="state-box" id="stateLoading" style="display:none">
-    <div style="margin:0 auto 12px;width:36px;height:36px;border:3px solid #d1fae5;border-top-color:#1a5c35;border-radius:50%;animation:spin .8s linear infinite"></div>
-    <p>Loading orders from AppSheet…</p>
-  </div>
-  <div id="stateOrders" style="display:none"></div>
 </div>
 
-<!-- Modal: Create Drafts -->
+<!-- ── Tab: Settings ── -->
+<div id="tab-settings" style="display:none">
+  <div class="panel">
+    <h2>Settings</h2>
+    <p class="panel-desc">Configuration for the invoice dashboard. Changes are saved automatically.</p>
+
+    <div class="form-group">
+      <label for="settingWorkerUrl">Cloudflare Worker URL</label>
+      <input type="text" id="settingWorkerUrl" placeholder="https://your-worker.workers.dev" />
+      <div class="form-hint">The backend Worker that fetches AppSheet data and calls Square.</div>
+    </div>
+
+    <div class="form-group">
+      <label for="settingDefaultDate">Default date on load</label>
+      <select id="settingDefaultDate">
+        <option value="nextThursday">Next Thursday (delivery day)</option>
+        <option value="tomorrow">Tomorrow</option>
+        <option value="today">Today</option>
+      </select>
+    </div>
+
+    <button class="btn btn-save" id="btnSaveSettings">Save settings</button>
+  </div>
+</div>
+
+<!-- ── Tab: Notes ── -->
+<div id="tab-notes" style="display:none">
+  <div class="panel">
+    <h2>Notes</h2>
+    <p class="panel-desc">Freeform notes — saved automatically in your browser.</p>
+    <div class="form-group">
+      <textarea id="notesArea" placeholder="Type your notes here…"></textarea>
+    </div>
+    <div class="form-hint" id="notesSaved" style="color:#16a34a;font-weight:600"></div>
+  </div>
+</div>
+
+<!-- ── Tab: Features ── -->
+<div id="tab-features" style="display:none">
+  <div class="panel">
+    <h2>Features</h2>
+    <p class="panel-desc">Toggle UI features on and off. Settings are saved in your browser.</p>
+
+    <div class="toggle-list">
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Auto-expand order cards</div>
+          <div class="toggle-row-desc">Show line items by default without clicking "Show items"</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="featAutoExpand" checked onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Show Square Customer ID on cards</div>
+          <div class="toggle-row-desc">Display the Square Customer ID below the customer name</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="featShowSqId" checked onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Show "Not in today's run" section</div>
+          <div class="toggle-row-desc">Display customers who ordered last week but not today</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="featShowNotInToday" checked onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Show "Skipped" section</div>
+          <div class="toggle-row-desc">Display orders that were automatically skipped and why</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="featShowSkipped" checked onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Show invoice title on cards</div>
+          <div class="toggle-row-desc">Display the invoice title (e.g. "06/26/2026 Invoice") on each card</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="featShowInvTitle" checked onchange="saveFeatures()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tab: Rules ── -->
+<div id="tab-rules" style="display:none">
+  <div class="panel">
+    <h2>Rules</h2>
+    <p class="panel-desc">Business rules applied when loading orders. Toggle rules on or off — changes take effect on the next order load.</p>
+
+    <div class="toggle-list">
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Skip Home Delivery customers</div>
+          <div class="toggle-row-desc">Customers with type "Home Delivery" are never invoiced via this tool</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ruleSkipHomeDelivery" checked onchange="saveRules()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Skip always-excluded customers</div>
+          <div class="toggle-row-desc">
+            <ul class="rule-list" style="margin:4px 0 0">
+              <li>Allium Eatery</li>
+              <li>Taner's Samples</li>
+              <li>Westport Farmers Market</li>
+              <li>Tony Mycelium Farm</li>
+              <li>Herbaceous Catering</li>
+            </ul>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ruleSkipAlways" checked onchange="saveRules()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Skip month-end billing customers</div>
+          <div class="toggle-row-desc">
+            <ul class="rule-list" style="margin:4px 0 0">
+              <li>Bora (Chef Yoel)</li>
+              <li>Terra Sole</li>
+              <li>Tavern at Graybarns</li>
+              <li>Tequila Escape</li>
+              <li>Gallo Ristorante</li>
+            </ul>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ruleSkipMonthEnd" checked onchange="saveRules()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Skip already-invoiced orders</div>
+          <div class="toggle-row-desc">Orders marked "Sent" in AppSheet are excluded from the run</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ruleSkipAlreadySent" checked onchange="saveRules()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Apply $50 delivery fee threshold</div>
+          <div class="toggle-row-desc">Add a $5 delivery fee for orders under $50 (except exempt accounts)</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ruleDeliveryFee" checked onchange="saveRules()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="form-hint" style="margin-top:14px">⚠️ Rule changes take effect the next time you click <strong>Load orders</strong>. The rules are passed to the backend Worker.</div>
+  </div>
+</div>
+
+<!-- ── Modals ── -->
 <div class="modal-overlay" id="modalDraft">
   <div class="modal">
     <h3>Create draft invoices?</h3>
@@ -324,8 +422,6 @@
     </div>
   </div>
 </div>
-
-<!-- Modal: Send Invoices -->
 <div class="modal-overlay" id="modalSend">
   <div class="modal">
     <h3>Send invoices?</h3>
@@ -338,44 +434,132 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
-// CONFIG — replace with your Cloudflare Worker URL after deploying
+// Config (overrideable from Settings tab)
 // ─────────────────────────────────────────────────────────────────────────────
-const WORKER_URL = 'https://aged-mouse-f451.highridgehydroponics.workers.dev';
+let WORKER_URL = localStorage.getItem('workerUrl') || 'https://aged-mouse-f451.highridgehydroponics.workers.dev';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────────────────────────────────────
-let state = {
-  orders:     [],
-  notInToday: [],
-  skipped:    [],
-};
+let state = { orders: [], notInToday: [], skipped: [] };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Persistent settings / features / rules (localStorage)
+// ─────────────────────────────────────────────────────────────────────────────
+function loadSettings() {
+  document.getElementById('settingWorkerUrl').value    = WORKER_URL;
+  document.getElementById('settingDefaultDate').value  = localStorage.getItem('defaultDate') || 'nextThursday';
+}
+
+function saveSettings() {
+  const url = document.getElementById('settingWorkerUrl').value.trim();
+  if (url) { WORKER_URL = url; localStorage.setItem('workerUrl', url); }
+  localStorage.setItem('defaultDate', document.getElementById('settingDefaultDate').value);
+  showToast('Settings saved', 'green');
+}
+
+function loadFeatures() {
+  const f = JSON.parse(localStorage.getItem('features') || '{}');
+  document.getElementById('featAutoExpand').checked    = f.autoExpand    !== false;
+  document.getElementById('featShowSqId').checked      = f.showSqId      !== false;
+  document.getElementById('featShowNotInToday').checked= f.showNotInToday!== false;
+  document.getElementById('featShowSkipped').checked   = f.showSkipped   !== false;
+  document.getElementById('featShowInvTitle').checked  = f.showInvTitle  !== false;
+}
+
+function saveFeatures() {
+  localStorage.setItem('features', JSON.stringify({
+    autoExpand:     document.getElementById('featAutoExpand').checked,
+    showSqId:       document.getElementById('featShowSqId').checked,
+    showNotInToday: document.getElementById('featShowNotInToday').checked,
+    showSkipped:    document.getElementById('featShowSkipped').checked,
+    showInvTitle:   document.getElementById('featShowInvTitle').checked,
+  }));
+}
+
+function getFeature(key) {
+  const f = JSON.parse(localStorage.getItem('features') || '{}');
+  return f[key] !== false; // default true
+}
+
+function loadRules() {
+  const r = JSON.parse(localStorage.getItem('rules') || '{}');
+  document.getElementById('ruleSkipHomeDelivery').checked = r.skipHomeDelivery !== false;
+  document.getElementById('ruleSkipAlways').checked       = r.skipAlways       !== false;
+  document.getElementById('ruleSkipMonthEnd').checked     = r.skipMonthEnd     !== false;
+  document.getElementById('ruleSkipAlreadySent').checked  = r.skipAlreadySent  !== false;
+  document.getElementById('ruleDeliveryFee').checked      = r.deliveryFee      !== false;
+}
+
+function saveRules() {
+  localStorage.setItem('rules', JSON.stringify({
+    skipHomeDelivery: document.getElementById('ruleSkipHomeDelivery').checked,
+    skipAlways:       document.getElementById('ruleSkipAlways').checked,
+    skipMonthEnd:     document.getElementById('ruleSkipMonthEnd').checked,
+    skipAlreadySent:  document.getElementById('ruleSkipAlreadySent').checked,
+    deliveryFee:      document.getElementById('ruleDeliveryFee').checked,
+  }));
+}
+
+function getRules() { return JSON.parse(localStorage.getItem('rules') || '{}'); }
+
+// Notes
+function loadNotes() { document.getElementById('notesArea').value = localStorage.getItem('notes') || ''; }
+
+let notesTimer;
+document.getElementById('notesArea').addEventListener('input', () => {
+  localStorage.setItem('notes', document.getElementById('notesArea').value);
+  clearTimeout(notesTimer);
+  const el = document.getElementById('notesSaved');
+  el.textContent = '';
+  notesTimer = setTimeout(() => { el.textContent = '✓ Saved'; setTimeout(() => { el.textContent = ''; }, 1500); }, 600);
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Date helpers
 // ─────────────────────────────────────────────────────────────────────────────
-function nextThursday() {
-  const d   = new Date();
+function getDefaultDate() {
+  const pref = localStorage.getItem('defaultDate') || 'nextThursday';
+  const d = new Date();
+  if (pref === 'today') return d;
+  if (pref === 'tomorrow') { d.setDate(d.getDate() + 1); return d; }
+  // nextThursday
   const diff = (4 - d.getDay() + 7) % 7 || 7;
   d.setDate(d.getDate() + diff);
   return d;
 }
-function toInputFmt(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function toDisplayFmt(iso) {
-  const [y, m, d] = iso.split('-');
-  return `${m}/${d}/${y}`;
-}
+function toInputFmt(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function toDisplayFmt(iso) { const [y,m,d] = iso.split('-'); return `${m}/${d}/${y}`; }
 
 // Init date picker
 const picker = document.getElementById('datePicker');
-picker.value = toInputFmt(nextThursday());
+picker.value = toInputFmt(getDefaultDate());
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab switching
+// ─────────────────────────────────────────────────────────────────────────────
+const TABS = ['orders', 'settings', 'notes', 'features', 'rules'];
+function switchTab(name) {
+  TABS.forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === name);
+  });
+  // Toolbar only shows on orders tab
+  const toolbar = document.getElementById('toolbar');
+  if (toolbar.dataset.loaded === '1') toolbar.style.display = name === 'orders' ? '' : 'none';
+}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// Settings save button
+document.getElementById('btnSaveSettings').addEventListener('click', saveSettings);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DOM refs
@@ -412,44 +596,38 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 // ─────────────────────────────────────────────────────────────────────────────
 // HTML escape
 // ─────────────────────────────────────────────────────────────────────────────
-function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Selected orders
 // ─────────────────────────────────────────────────────────────────────────────
 function selectedOrders() {
-  return state.orders.filter(o => {
-    const cb = document.getElementById(`cb-${o.id}`);
-    return cb && cb.checked;
-  });
+  return state.orders.filter(o => { const cb = document.getElementById(`cb-${o.id}`); return cb && cb.checked; });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Run status indicator
+// Status dot
 // ─────────────────────────────────────────────────────────────────────────────
 function setStatus(msg, color) {
   if (!msg) { runStatus.classList.remove('visible'); return; }
   runStatus.classList.add('visible');
-  runDot.className      = `run-dot ${color}`;
+  runDot.className = `run-dot ${color}`;
   runStatusTxt.textContent = msg;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Toolbar stats + button visibility
+// Toolbar stats
 // ─────────────────────────────────────────────────────────────────────────────
 function updateToolbar() {
   const sel   = selectedOrders();
-  const grand = sel.reduce((s, o) => s + (o.total || 0), 0);
+  const grand = sel.reduce((s,o) => s + (o.total||0), 0);
   statText.innerHTML = `<strong>${sel.length}</strong> of <strong>${state.orders.length}</strong> selected &nbsp;·&nbsp; Total: <strong>$${grand.toFixed(2)}</strong>`;
-
   btnDraft.style.display = sel.some(o => o.status === 'pending')  ? '' : 'none';
   btnSend.style.display  = sel.some(o => o.status === 'drafted') ? '' : 'none';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Recompute line totals when qty/price edited
+// Recompute line totals
 // ─────────────────────────────────────────────────────────────────────────────
 function recomputeCard(orderId) {
   const order = state.orders.find(o => o.id === orderId);
@@ -460,20 +638,18 @@ function recomputeCard(orderId) {
     const pEl = document.getElementById(`price-${orderId}-${i}`);
     const tEl = document.getElementById(`liTotal-${orderId}-${i}`);
     if (!qEl) return;
-    li.qty       = parseFloat(qEl.value)   || 0;
-    li.unitPrice = parseFloat(pEl.value)   || 0;
-    li.total     = Math.round(li.qty * li.unitPrice * 100) / 100;
+    li.qty = parseFloat(qEl.value) || 0;
+    li.unitPrice = parseFloat(pEl.value) || 0;
+    li.total = Math.round(li.qty * li.unitPrice * 100) / 100;
     if (tEl) tEl.textContent = `$${li.total.toFixed(2)}`;
     sub += li.total;
   });
   order.subtotal = Math.round(sub * 100) / 100;
   order.total    = Math.round((order.subtotal + order.deliveryFee) * 100) / 100;
-  const sEl = document.getElementById(`sub-${orderId}`);
-  const tEl = document.getElementById(`tot-${orderId}`);
-  const hEl = document.getElementById(`hdrTotal-${orderId}`);
-  if (sEl) sEl.textContent = `$${order.subtotal.toFixed(2)}`;
-  if (tEl) tEl.textContent = `$${order.total.toFixed(2)}`;
-  if (hEl) hEl.textContent = `$${order.total.toFixed(2)}`;
+  ['sub','tot','hdrTotal'].forEach(prefix => {
+    const el = document.getElementById(`${prefix}-${orderId}`);
+    if (el) el.textContent = `$${(prefix === 'sub' ? order.subtotal : order.total).toFixed(2)}`;
+  });
   updateToolbar();
 }
 
@@ -486,10 +662,11 @@ function renderCard(order) {
   const isError   = order.status === 'error';
   const hasDfee   = order.deliveryFee > 0;
   const ro        = isSent ? 'readonly disabled' : '';
+  const autoExpand = getFeature('autoExpand');
 
   let cls = 'card';
   if (!order.squareConflict && order.status === 'pending') cls += ' selected';
-  if (order.squareConflict && order.status === 'pending') cls += ' has-conflict';
+  if (order.squareConflict && order.status === 'pending')  cls += ' has-conflict';
   if (isDrafted) cls += ' status-drafted';
   if (isSent)    cls += ' status-sent';
   if (isError)   cls += ' status-error';
@@ -500,17 +677,24 @@ function renderCard(order) {
                     : isDrafted ? `<span class="badge badge-drafted">Draft created</span>`
                     : isError   ? `<span class="badge badge-error">Error</span>` : '';
 
+  const invTitleLine = getFeature('showInvTitle') && order.invoiceTitle
+    ? `<div class="card-inv-title">${esc(order.invoiceTitle)}</div>` : '';
+  const sqIdLine = getFeature('showSqId') && order.squareCustomerId
+    ? `<div class="card-sq-id">SQ: ${esc(order.squareCustomerId)}</div>` : '';
+
   const liRows = order.lineItems.map((li, i) => `
     <div class="line-item">
       <div class="li-name">${esc(li.name)}</div>
       <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"              ${ro} oninput="recomputeCard('${order.id}')">
       <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}" ${ro} oninput="recomputeCard('${order.id}')">
       <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 
   const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
     ? `<a class="inv-link" href="${order.squareInvoiceUrl}" target="_blank">↗ View in Square</a>` : '';
+
+  const bodyClass = autoExpand ? 'card-body' : 'card-body closed';
+  const toggleTxt = autoExpand ? '▾ Hide items' : '▸ Show items';
 
   return `
     <div class="${cls}" id="card-${order.id}">
@@ -522,6 +706,8 @@ function renderCard(order) {
         <div class="card-meta">
           <div class="card-name">${esc(order.customerName)}</div>
           <div class="card-email">${esc(order.customerEmail || '—')}</div>
+          ${invTitleLine}
+          ${sqIdLine}
           <div class="card-badges">${stopBadge}${bringBadge}${statusBadge}</div>
         </div>
         <div class="card-total">
@@ -531,8 +717,8 @@ function renderCard(order) {
       </div>
       ${order.squareConflict ? `<div class="conflict-bar">⚠️ ${esc(order.squareConflict)}</div>` : ''}
       ${isError ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
-      <button class="card-expand-toggle" id="toggle-${order.id}" onclick="toggleExpand('${order.id}')">▸ Show items</button>
-      <div class="card-body" id="body-${order.id}">
+      <button class="card-expand-toggle" id="toggle-${order.id}" onclick="toggleExpand('${order.id}')">${toggleTxt}</button>
+      <div class="${bodyClass}" id="body-${order.id}">
         <div class="line-items">
           <div class="line-item" style="font-size:11px;font-weight:700;color:#9ca3af;border-bottom:1px solid #e5e7eb;padding-bottom:4px">
             <div>PRODUCT</div><div style="text-align:right">QTY</div><div style="text-align:right">UNIT $</div><div style="text-align:right">TOTAL</div>
@@ -553,8 +739,8 @@ function toggleExpand(id) {
   const body = document.getElementById(`body-${id}`);
   const btn  = document.getElementById(`toggle-${id}`);
   if (!body) return;
-  const open = body.classList.toggle('open');
-  if (btn) btn.textContent = open ? '▾ Hide items' : '▸ Show items';
+  const closed = body.classList.toggle('closed');
+  if (btn) btn.textContent = closed ? '▸ Show items' : '▾ Hide items';
 }
 
 function toggleCard(id) {
@@ -565,19 +751,18 @@ function toggleCard(id) {
   updateToolbar();
 }
 
-// Patch a card in-place (preserves open/closed state)
 function patchCard(order) {
   const el = document.getElementById(`card-${order.id}`);
   if (!el) return;
-  const wasOpen = document.getElementById(`body-${order.id}`)?.classList.contains('open');
+  const wasClosed = document.getElementById(`body-${order.id}`)?.classList.contains('closed');
   const tmp = document.createElement('div');
   tmp.innerHTML = renderCard(order);
   el.replaceWith(tmp.firstElementChild);
-  if (wasOpen) {
+  if (wasClosed) {
     const body = document.getElementById(`body-${order.id}`);
     const btn  = document.getElementById(`toggle-${order.id}`);
-    if (body) body.classList.add('open');
-    if (btn)  btn.textContent = '▾ Hide items';
+    if (body) body.classList.add('closed');
+    if (btn)  btn.textContent = '▸ Show items';
   }
 }
 
@@ -599,7 +784,7 @@ function renderOrders() {
     html += `</div>`;
   }
 
-  if (state.notInToday.length) {
+  if (getFeature('showNotInToday') && state.notInToday.length) {
     html += `<div class="section-label">Not in today's run — ordered last week</div><div class="mini-list">`;
     state.notInToday.forEach(c => {
       const items = c.items.map(i => `${i.qty}× ${i.name}`).join(', ');
@@ -612,7 +797,7 @@ function renderOrders() {
     html += `</div>`;
   }
 
-  if (state.skipped.length) {
+  if (getFeature('showSkipped') && state.skipped.length) {
     html += `<div class="section-label">Skipped (${state.skipped.length})</div><div class="mini-list">`;
     state.skipped.forEach(s => {
       html += `<div class="mini-card">
@@ -625,6 +810,7 @@ function renderOrders() {
 
   stateOrders.innerHTML = html;
   toolbar.style.display = '';
+  toolbar.dataset.loaded = '1';
   updateToolbar();
 }
 
@@ -634,14 +820,24 @@ function renderOrders() {
 document.getElementById('btnLoad').addEventListener('click', async () => {
   if (!picker.value) { showToast('Pick a date first', 'red'); return; }
   const date = toDisplayFmt(picker.value);
+  const rules = getRules();
+
+  // Build query string with active rules
+  const params = new URLSearchParams({ date });
+  if (rules.skipHomeDelivery === false) params.set('skipHomeDelivery', '0');
+  if (rules.skipAlways       === false) params.set('skipAlways', '0');
+  if (rules.skipMonthEnd     === false) params.set('skipMonthEnd', '0');
+  if (rules.skipAlreadySent  === false) params.set('skipAlreadySent', '0');
+  if (rules.deliveryFee      === false) params.set('deliveryFee', '0');
 
   stateEmpty.style.display   = 'none';
   stateLoading.style.display = '';
   stateOrders.style.display  = 'none';
   toolbar.style.display      = 'none';
+  switchTab('orders');
 
   try {
-    const res  = await fetch(`${WORKER_URL}/orders?date=${encodeURIComponent(date)}`);
+    const res  = await fetch(`${WORKER_URL}/orders?${params}`);
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
     const data = await res.json();
 
@@ -666,8 +862,7 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
 btnDraft.addEventListener('click', () => {
   const sel = selectedOrders().filter(o => o.status === 'pending');
   if (!sel.length) { showToast('No pending orders selected', ''); return; }
-  document.getElementById('modalDraftList').innerHTML =
-    sel.map(o => `• ${esc(o.customerName)} — $${o.total.toFixed(2)}`).join('<br>');
+  document.getElementById('modalDraftList').innerHTML = sel.map(o => `• ${esc(o.customerName)} — $${o.total.toFixed(2)}`).join('<br>');
   openModal('modalDraft');
 });
 
@@ -680,28 +875,16 @@ document.getElementById('btnConfirmDraft').addEventListener('click', async () =>
   btnDraft.disabled = true;
 
   try {
-    const res  = await fetch(`${WORKER_URL}/create-drafts`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ orders: sel }),
-    });
+    const res  = await fetch(`${WORKER_URL}/create-drafts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: sel }) });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
     const data = await res.json();
 
-    data.orders.forEach(u => {
-      const idx = state.orders.findIndex(o => o.id === u.id);
-      if (idx !== -1) { state.orders[idx] = u; patchCard(u); }
-    });
-
+    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) { state.orders[idx] = u; patchCard(u); } });
     const ok  = data.orders.filter(o => o.status === 'drafted').length;
     const err = data.orders.filter(o => o.status === 'error').length;
     setStatus('', '');
     updateToolbar();
-    showToast(
-      err ? `${ok} draft${ok !== 1 ? 's' : ''} created, ${err} error${err !== 1 ? 's' : ''}` :
-            `${ok} draft${ok !== 1 ? 's' : ''} created — ready to send!`,
-      err ? 'red' : 'green'
-    );
+    showToast(err ? `${ok} draft${ok !== 1?'s':''} created, ${err} error${err !== 1?'s':''}` : `${ok} draft${ok !== 1?'s':''} created — ready to send!`, err ? 'red' : 'green');
   } catch (e) {
     setStatus('', '');
     showToast('Draft creation failed: ' + e.message, 'red');
@@ -717,8 +900,7 @@ document.getElementById('btnConfirmDraft').addEventListener('click', async () =>
 btnSend.addEventListener('click', () => {
   const sel = selectedOrders().filter(o => o.status === 'drafted');
   if (!sel.length) { showToast('No drafted invoices selected', ''); return; }
-  document.getElementById('modalSendList').innerHTML =
-    sel.map(o => `• ${esc(o.customerName)} — $${o.total.toFixed(2)}`).join('<br>');
+  document.getElementById('modalSendList').innerHTML = sel.map(o => `• ${esc(o.customerName)} — $${o.total.toFixed(2)}`).join('<br>');
   openModal('modalSend');
 });
 
@@ -731,28 +913,16 @@ document.getElementById('btnConfirmSend').addEventListener('click', async () => 
   btnSend.disabled = true;
 
   try {
-    const res  = await fetch(`${WORKER_URL}/send-invoices`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ orders: sel }),
-    });
+    const res  = await fetch(`${WORKER_URL}/send-invoices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: sel }) });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
     const data = await res.json();
 
-    data.orders.forEach(u => {
-      const idx = state.orders.findIndex(o => o.id === u.id);
-      if (idx !== -1) { state.orders[idx] = u; patchCard(u); }
-    });
-
+    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) { state.orders[idx] = u; patchCard(u); } });
     const ok  = data.orders.filter(o => o.status === 'sent').length;
     const err = data.orders.filter(o => o.status === 'error').length;
     setStatus(err === 0 ? 'All invoices sent ✓' : '', 'green');
     updateToolbar();
-    showToast(
-      err ? `${ok} sent, ${err} error${err !== 1 ? 's' : ''}` :
-            `${ok} invoice${ok !== 1 ? 's' : ''} sent!`,
-      err ? 'red' : 'green'
-    );
+    showToast(err ? `${ok} sent, ${err} error${err !== 1?'s':''}` : `${ok} invoice${ok !== 1?'s':''} sent!`, err ? 'red' : 'green');
   } catch (e) {
     setStatus('', '');
     showToast('Send failed: ' + e.message, 'red');
@@ -761,6 +931,14 @@ document.getElementById('btnConfirmSend').addEventListener('click', async () => 
     updateToolbar();
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────────────────
+loadSettings();
+loadFeatures();
+loadRules();
+loadNotes();
 </script>
 </body>
 </html>
