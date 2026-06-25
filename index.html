@@ -1157,7 +1157,8 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
 
 // ── Phase 2: Square cross-reference ────────────────────────────────────────────
 async function runSquareCheck() {
-  const toCheck = state.orders.filter(o => o.squareCustomerId && o.status === 'pending');
+  // Send all orders with a Square Customer ID — worker fetches both invoice status AND customer email
+  const toCheck = state.orders.filter(o => o.squareCustomerId);
   if (!toCheck.length) return;
 
   try {
@@ -1176,11 +1177,14 @@ async function runSquareCheck() {
     for (const order of state.orders) {
       const r = results[order.id];
       if (!r) continue;
-      order.status               = r.status;
-      order.squareInvoiceId      = r.squareInvoiceId;
-      order.squareInvoiceUrl     = r.squareInvoiceUrl;
-      order.squareInvoiceNumber  = r.squareInvoiceNumber;
-      order.squareOrderId        = r.squareOrderId;
+      // Only overwrite invoice fields if they came back (no-match orders only return customerEmail)
+      if (r.status)              order.status              = r.status;
+      if (r.squareInvoiceId)     order.squareInvoiceId     = r.squareInvoiceId;
+      if (r.squareInvoiceUrl)    order.squareInvoiceUrl    = r.squareInvoiceUrl;
+      if (r.squareInvoiceNumber) order.squareInvoiceNumber = r.squareInvoiceNumber;
+      if (r.squareOrderId)       order.squareOrderId       = r.squareOrderId;
+      // Always apply email from Square — overrides the AppSheet gap
+      if (r.customerEmail)       order.customerEmail       = r.customerEmail;
       anyUpdate = true;
     }
     if (anyUpdate) {
