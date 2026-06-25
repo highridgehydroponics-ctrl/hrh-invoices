@@ -612,9 +612,6 @@ function renderAddressBook() {
     <div class="ab-card">
       <div class="ab-card-header">
         <div class="ab-card-name">${esc(c.name)}</div>
-        <div style="display:flex;gap:6px;align-items:center">
-          ${c.squareCustomerId ? `<a href="https://app.squareup.com/dashboard/customers/${c.squareCustomerId}?currentUnitToken=BYZ5P0549Z01F" target="_blank" class="ab-sq-btn">⬡ View invoices</a>` : ''}
-        </div>
       </div>
       <div class="ab-card-body">
         ${c.email ? `<div class="ab-field"><span class="ab-label">Email</span><span style="font-size:13px;word-break:break-all">${esc(c.email)}</span></div>` : ''}
@@ -627,18 +624,17 @@ function renderAddressBook() {
         <div class="ab-field"><span class="ab-label">Bring invoice</span><span style="font-size:13px">${c.bringInvoice ? '📄 Yes — bring printed invoice' : 'No'}</span></div>
         ${c.lastSeen ? `<div class="ab-field"><span class="ab-label">Last seen</span><span style="font-size:13px">${esc(c.lastSeen)}</span></div>` : ''}
       </div>
-      ${c.invoices?.length ? `
-        <div class="ab-invoices">
-          <div class="ab-inv-label">Invoice history (${c.invoices.length})</div>
-          ${c.invoices.slice(0,8).map(inv => `
-            <div class="ab-inv-row">
-              <span>${esc(inv.date || '')}</span>
-              <span style="font-weight:600">$${(inv.total||0).toFixed(2)}</span>
-              <span style="color:#6b7280">${esc(inv.invoiceNumber || '—')}</span>
-              <span>${inv.squareInvoiceUrl ? `<a href="${esc(inv.squareInvoiceUrl)}" target="_blank" style="color:#3b82f6;font-size:11px">↗ View</a>` : ''}</span>
-            </div>
-          `).join('')}
-        </div>` : ''}
+      <div class="ab-invoices">
+        <div class="ab-inv-label">Invoice history${c.invoices?.length ? ` (${c.invoices.length})` : ''}</div>
+        ${c.invoices?.length ? c.invoices.slice(0,20).map(inv => `
+          <div class="ab-inv-row">
+            <span>${esc(inv.date || '')}</span>
+            <span style="font-weight:600">$${(inv.total||0).toFixed(2)}</span>
+            <span style="color:#6b7280">${esc(inv.invoiceNumber || '—')}</span>
+            <span>${inv.squareInvoiceUrl ? `<a href="${esc(inv.squareInvoiceUrl)}" target="_blank" style="color:#3b82f6;font-size:11px">↗ View</a>` : ''}</span>
+          </div>
+        `).join('') : '<div style="font-size:12px;color:#9ca3af;padding:4px 0">No invoices recorded yet — they appear here after you run invoices from the dashboard.</div>'}
+      </div>
     </div>
   `).join('');
 }
