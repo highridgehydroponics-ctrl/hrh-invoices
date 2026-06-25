@@ -69,13 +69,17 @@
     .state-box p { font-size: 15px; }
 
     /* ── Section headers ── */
-    .section-header { display: flex; align-items: center; gap: 12px; margin: 24px 0 10px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin: 24px 0 10px; cursor: pointer; user-select: none; }
+    .section-header:hover .section-label { color: #1e3a5f; }
+    .section-chevron { font-size: 13px; color: #9ca3af; transition: transform .2s; flex-shrink: 0; }
+    .section-chevron.collapsed { transform: rotate(-90deg); }
+    .section-body.collapsed { display: none; }
     .section-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; flex: 1; }
     .section-count { font-size: 12px; font-weight: 600; color: #9ca3af; }
     .section-actions { display: flex; gap: 6px; }
 
     /* ── Orders grid ── */
-    .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+    .orders-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 
     /* ── Card ── */
     .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 2px solid #e5e7eb; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
@@ -858,7 +862,7 @@ function renderCard(order) {
                     : isDuplicate ? `<span class="badge badge-duplicate">⚠ Duplicate</span>`
                     : isError   ? `<span class="badge badge-error">Error</span>` : '';
 
-  const invTitleLine = getFeature('showInvTitle') && order.invoiceTitle ? `<div class="card-inv-title">${esc(order.invoiceTitle)}</div>` : '';
+  const invTitleLine = `<div class="card-inv-title"><span style="color:#9ca3af;font-weight:600">Title:</span> ${esc(order.invoiceTitle || '—')}</div>`;
   const sqIdLine     = getFeature('showSqId') && order.squareCustomerId ? `<div class="card-sq-id">SQ: ${esc(order.squareCustomerId)}</div>` : '';
 
   const wowBadgeAndPanel = buildWowHtml(order);
@@ -867,13 +871,18 @@ function renderCard(order) {
   const sardinWarning = sardilli && sardilli.warning ? `<div class="conflict-bar">🐟 ${esc(sardilli.warning)}</div>` : '';
   const sardinPoLine  = sardilli && sardilli.poNumber && !sardilli.warning ? `<span class="badge" style="background:#d1fae5;color:#065f46">PO #${esc(sardilli.poNumber)}</span>` : '';
 
-  const liRows = order.lineItems.map((li, i) => `
+  const liRows = order.lineItems.map((li, i) => {
+    const liStatus    = (li.status || '').toLowerCase();
+    const isPackedOut = liStatus.includes('packed') || li.status === 'Y';
+    const nameColor   = li.status ? (isPackedOut ? '#16a34a' : '#ea580c') : '';
+    const nameStyle   = nameColor ? ` style="color:${nameColor};font-weight:600"` : '';
+    return `
     <div class="line-item">
-      <div class="li-name">${esc(li.name)}</div>
+      <div class="li-name"${nameStyle}>${esc(li.name)}</div>
       <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"                    ${ro} oninput="recomputeCard('${order.id}')">
       <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}"   ${ro} oninput="recomputeCard('${order.id}')">
       <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
-    </div>`).join('');
+    </div>`;}).join('');
 
   const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
     ? `<a class="inv-link" href="${order.squareInvoiceUrl}" target="_blank">↗ View in Square</a>` : '';
@@ -892,7 +901,9 @@ function renderCard(order) {
                onclick="event.stopPropagation();toggleCard('${order.id}')">
         <div class="card-meta">
           <div class="card-name">${esc(order.customerName)}</div>
-          <div class="card-email">${esc(order.customerEmail || '—')}</div>
+          <div class="card-email">${order.customerEmail
+            ? `<span style="color:#9ca3af;font-weight:600">Send to:</span> ${esc(order.customerEmail)}`
+            : `<span style="color:#dc2626;font-weight:600">⚠ No email on file</span>`}</div>
           ${invTitleLine}
           ${sqIdLine}
           <div class="card-badges">${stopBadge}${bringBadge}${statusBadge}${sardinPoLine}</div>
@@ -968,14 +979,16 @@ function renderOrders() {
   let html = '';
 
   // ── Section 1: Invoices (pending) ──────────────────────────────────────────
-  html += `<div class="section-header">
-    <span class="section-label">Invoices</span>
+  html += `<div class="section-header" onclick="toggleSection('pending')">
+    <span class="section-chevron" id="sec-chev-pending">▾</span>
+    <span class="section-label">${state.date || 'Today'} Orders</span>
     <span class="section-count">${pending.length} pending</span>
-    <div class="section-actions">
+    <div class="section-actions" onclick="event.stopPropagation()">
       <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select all</button>
       <button class="btn btn-sm btn-ghost" onclick="deselectAllSection('pending')">Deselect</button>
     </div>
   </div>`;
+  html += `<div class="section-body${isSectionCollapsed('pending') ? ' collapsed' : ''}" id="sec-body-pending">`;
 
   if (!pending.length) {
     html += `<div style="padding:16px;text-align:center;color:#9ca3af;font-size:14px;background:#fff;border-radius:8px;border:1px dashed #e5e7eb">No pending orders${drafts.length ? ' — all drafted!' : '.'}</div>`;
@@ -988,10 +1001,12 @@ function renderOrders() {
   // ── Section 2: Upcoming (not-in-today + skipped) ───────────────────────────
   if (getFeature('showNotInToday') && (state.notInToday.length || state.skipped.length)) {
     const upcomingCount = state.notInToday.length + state.skipped.length;
-    html += `<div class="section-header" style="margin-top:32px">
+    html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('upcoming')">
+      <span class="section-chevron" id="sec-chev-upcoming">▾</span>
       <span class="section-label">Upcoming</span>
       <span class="section-count">${upcomingCount} accounts</span>
-    </div>`;
+    </div>
+    <div class="section-body${isSectionCollapsed('upcoming') ? ' collapsed' : ''}" id="sec-body-upcoming">`;
 
     if (state.notInToday.length) {
       html += `<div class="mini-list">`;
@@ -1017,34 +1032,40 @@ function renderOrders() {
     }
   }
 
+  html += `</div>`; // close sec-body-upcoming
   // ── Section 3: Drafts ──────────────────────────────────────────────────────
   if (drafts.length || errors.length) {
-    html += `<div class="section-header" style="margin-top:32px">
+    html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('drafts')">
+      <span class="section-chevron" id="sec-chev-drafts">▾</span>
       <span class="section-label">Drafts</span>
       <span class="section-count">${drafts.length} ready to send${errors.length ? `, ${errors.length} error` : ''}</span>
-      <div class="section-actions">
+      <div class="section-actions" onclick="event.stopPropagation()">
         <button class="btn btn-sm btn-ghost" onclick="selectAllDrafted()">Select all</button>
         <button class="btn btn-sm btn-ghost" onclick="deselectAllSection('drafted')">Deselect</button>
       </div>
-    </div>
-    <div class="orders-grid">`;
+    </div>`;
+    html += `<div class="section-body${isSectionCollapsed('drafts') ? ' collapsed' : ''}" id="sec-body-drafts">`;
+    html += `<div class="orders-grid">`;
     [...drafts, ...errors].forEach(o => { html += renderCard(o); });
-    html += `</div>`;
+    html += `</div></div>`;
   }
 
   // ── Section 4: Sent ────────────────────────────────────────────────────────
   if (sent.length) {
     const sentTotal = sent.reduce((s, o) => s + o.total, 0);
-    html += `<div class="section-header" style="margin-top:32px">
+    html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('sent')">
+      <span class="section-chevron" id="sec-chev-sent">▾</span>
       <span class="section-label">Sent</span>
       <span class="section-count">${sent.length} invoices · $${sentTotal.toFixed(2)}</span>
-    </div>
-    <div class="orders-grid">`;
+    </div>`;
+    html += `<div class="section-body${isSectionCollapsed('sent') ? ' collapsed' : ''}" id="sec-body-sent">`;
+    html += `<div class="orders-grid">`;
     sent.forEach(o => { html += renderCard(o); });
-    html += `</div>`;
+    html += `</div></div>`;
   }
 
   stateOrders.innerHTML = html;
+  initSectionChevrons();
   toolbar.style.display = '';
   toolbar.dataset.loaded = '1';
   updateToolbar();
