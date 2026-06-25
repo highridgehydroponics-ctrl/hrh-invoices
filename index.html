@@ -800,9 +800,20 @@ function buildWowHtml(order) {
 
   const rows = wow.items.map(item => {
     const cls  = `wow-${item.change}`;
-    const thisCol = item.thisQty !== null ? `${item.thisQty}× ($${item.thisTotal?.toFixed(2)})` : '—';
     const lastCol = item.lastQty !== null ? `${item.lastQty}× ($${item.lastTotal?.toFixed(2)})` : '—';
-    return `<tr class="${cls}"><td class="wow-name">${esc(item.name)}</td><td>${thisCol}</td><td>${lastCol}</td></tr>`;
+
+    // Color this week's value: green if up vs last week, red if down, default if same
+    let thisColor = '';
+    if (item.change === 'new')     thisColor = '#16a34a';   // new item → green
+    if (item.change === 'dropped') thisColor = '#dc2626';   // dropped → red
+    if (item.change === 'changed') {
+      thisColor = (item.thisTotal ?? 0) > (item.lastTotal ?? 0) ? '#16a34a' : '#dc2626';
+    }
+    const thisStyle = thisColor ? ` style="color:${thisColor};font-weight:700"` : '';
+    const thisCol = item.thisQty !== null
+      ? `<span${thisStyle}>${item.thisQty}× ($${item.thisTotal?.toFixed(2)})</span>` : '—';
+
+    return `<tr class="${cls}"><td class="wow-name">${esc(item.name)}</td><td>${thisCol}</td><td style="color:#111">${lastCol}</td></tr>`;
   }).join('');
 
   const deltaClass = wow.deltaTotal > 0 ? 'pos' : wow.deltaTotal < 0 ? 'neg' : '';
@@ -855,12 +866,11 @@ function renderCard(order) {
   if (isError)     cls += ' status-error';
   if (isDuplicate) cls += ' status-duplicate';
 
-  const stopBadge   = order.stopNum !== null ? `<span class="badge badge-stop">Stop ${order.stopNum}</span>` : '';
-  const bringBadge  = order.bringInvoice ? `<span class="badge badge-bring">📄 Print invoice</span>` : '';
-  const statusBadge = isSent    ? `<span class="badge badge-sent">✓ Sent</span>`
-                    : isDrafted ? `<span class="badge badge-drafted">Draft created</span>`
+  const stopBadge   = (!isSent && order.stopNum !== null) ? `<span class="badge badge-stop">Stop ${order.stopNum}</span>` : '';
+  const bringBadge  = (!isSent && order.bringInvoice) ? `<span class="badge badge-bring">📄 Print invoice</span>` : '';
+  const statusBadge = isDrafted   ? `<span class="badge badge-drafted">Draft created</span>`
                     : isDuplicate ? `<span class="badge badge-duplicate">⚠ Duplicate</span>`
-                    : isError   ? `<span class="badge badge-error">Error</span>` : '';
+                    : isError     ? `<span class="badge badge-error">Error</span>` : '';
 
   const invTitleLine = `<div class="card-inv-title"><span style="color:#9ca3af;font-weight:600">Title:</span> ${esc(order.invoiceTitle || '—')}</div>`;
   const sqIdLine     = getFeature('showSqId') && order.squareCustomerId ? `<div class="card-sq-id">SQ: ${esc(order.squareCustomerId)}</div>` : '';
