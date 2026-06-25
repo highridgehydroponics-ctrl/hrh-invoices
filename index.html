@@ -884,6 +884,8 @@ function renderCard(order) {
       <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
     </div>`;}).join('');
 
+  const invNumLine = (isDrafted || isSent) && order.squareInvoiceNumber
+    ? `<div class="card-inv-title"><span style="color:#9ca3af;font-weight:600">Invoice #:</span> ${esc(order.squareInvoiceNumber)}</div>` : '';
   const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
     ? `<a class="inv-link" href="${order.squareInvoiceUrl}" target="_blank">↗ View in Square</a>` : '';
   const dupLink = isDuplicate && order.existingInvoiceUrl
@@ -906,6 +908,7 @@ function renderCard(order) {
             : `<span style="color:#dc2626;font-weight:600">⚠ No email on file</span>`}</div>
           ${invTitleLine}
           ${sqIdLine}
+          ${invNumLine}
           <div class="card-badges">${stopBadge}${bringBadge}${statusBadge}${sardinPoLine}</div>
           <div class="card-badges" style="margin-top:3px">${wowBadgeAndPanel}</div>
         </div>
@@ -1132,6 +1135,9 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
     showSardelliPOBanner();
     setStatus('', '');
     showToast(`Loaded ${state.orders.length} orders for ${date}${monthEndMode ? ' (month-end mode)' : ''}`, 'green');
+
+    // Phase 2: check Square for existing invoices in the background
+    runSquareCheck();
   } catch (e) {
     stateLoading.style.display = 'none';
     stateEmpty.style.display   = '';
@@ -1139,6 +1145,44 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
     showToast('Failed to load orders', 'red');
   }
 });
+
+// ── Phase 2: Square cross-reference ────────────────────────────────────────────
+async function runSquareCheck() {
+  const toCheck = state.orders.filter(o => o.squareCustomerId && o.status === 'pending');
+  if (!toCheck.length) return;
+
+  try {
+    const res = await fetch(`${WORKER_URL}/square-check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders: toCheck.map(o => ({
+        id: o.id, squareCustomerId: o.squareCustomerId, invoiceTitle: o.invoiceTitle
+      })) }),
+    });
+    if (!res.ok) return;
+    const { results } = await res.json();
+    if (!results) return;
+
+    let anyUpdate = false;
+    for (const order of state.orders) {
+      const r = results[order.id];
+      if (!r) continue;
+      order.status               = r.status;
+      order.squareInvoiceId      = r.squareInvoiceId;
+      order.squareInvoiceUrl     = r.squareInvoiceUrl;
+      order.squareInvoiceNumber  = r.squareInvoiceNumber;
+      order.squareOrderId        = r.squareOrderId;
+      anyUpdate = true;
+    }
+    if (anyUpdate) {
+      renderOrders();
+      initSectionChevrons();
+      showSardelliPOBanner();
+    }
+  } catch (e) {
+    console.warn('[square-check]', e.message);
+  }
+}
 
 // ── Create Drafts ───────────────────────────────────────────────────────────────
 btnDraft.addEventListener('click', () => {
