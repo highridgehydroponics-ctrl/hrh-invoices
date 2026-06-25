@@ -80,43 +80,37 @@
     .section-actions { display: flex; gap: 6px; }
 
     /* ── Orders grid ── */
-    .orders-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-
-    /* ── Card ── */
-    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 2px solid #e5e7eb; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
-    /* Pending/Upcoming = red, Drafted = orange, Sent = green */
-    .card                 { border-color: #fca5a5; }                                          /* pending → red */
-    .card.selected        { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); background: #fff9f9; }
-    .card.has-conflict    { border-color: #fbbf24; }
-    .card.status-drafted  { border-color: #fb923c; background: #fff8f3; }                     /* drafted → orange */
-    .card.status-drafted.selected { border-color: #ea580c; box-shadow: 0 0 0 3px rgba(234,88,12,.15); }
-    .card.status-sent     { border-color: #4ade80; background: #f0fdf4; }                     /* sent → green */
-    .card.status-error    { border-color: #dc2626; }
-    .card.status-duplicate{ border-color: #fbbf24; background: #fffbeb; }
-
-    .card-header { padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; }
-    .card-checkbox { margin-top: 2px; flex-shrink: 0; width: 17px; height: 17px; cursor: pointer; accent-color: #1e3a5f; }
-    .card-meta { flex: 1; min-width: 0; }
-    .card-name  { font-size: 15px; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .card-email { font-size: 12px; color: #6b7280; margin-top: 2px; }
-    .card-inv-title { font-size: 11px; color: #9ca3af; margin-top: 2px; }
-    .card-sq-id { font-size: 10px; color: #c0c4cc; font-family: monospace; margin-top: 1px; }
-    .card-badges { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+    /* ── Orders Table ── */
+    .orders-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 4px; }
+    .orders-table thead th { padding: 9px 12px; font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; text-align: left; border-bottom: 2px solid #f3f4f6; background: #fafafa; white-space: nowrap; }
+    .orders-table thead th.th-center { text-align: center; }
+    .order-row { cursor: pointer; border-left: 3px solid #fca5a5; transition: background .1s; }
+    .order-row:hover { background: #fff0f0; }
+    .order-row.status-drafted  { border-left-color: #fb923c; background: #fff8f3; }
+    .order-row.status-drafted:hover { background: #fff0e6; }
+    .order-row.status-sent     { border-left-color: #4ade80; background: #f0fdf4; }
+    .order-row.status-sent:hover { background: #e6faf0; }
+    .order-row.status-error    { border-left-color: #dc2626; }
+    .order-row.status-duplicate{ border-left-color: #fbbf24; background: #fffbeb; }
+    .order-row td { padding: 10px 12px; vertical-align: middle; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #374151; }
+    .order-detail-row td { padding: 0; border-bottom: 2px solid #e5e7eb; background: #fafafa; }
+    .tbl-name { font-size: 14px; font-weight: 700; color: #111; }
+    .tbl-email { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .tbl-email.no-email { color: #dc2626; font-weight: 600; }
+    .tbl-amount { font-size: 15px; font-weight: 800; color: #1e3a5f; white-space: nowrap; }
+    .tbl-center { text-align: center; }
+    .tbl-inv-num a { color: #3b82f6; text-decoration: none; font-size: 12px; }
+    .tbl-inv-num a:hover { text-decoration: underline; }
+    .tbl-paid { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .tbl-paid.paid    { background: #d1fae5; color: #065f46; }
+    .tbl-paid.partial { background: #fef3c7; color: #92400e; }
+    .tbl-paid.unpaid  { background: #f3f4f6; color: #6b7280; }
+    .tbl-expand-btn { font-size: 12px; color: #9ca3af; text-align: center; user-select: none; width: 28px; }
+    .card-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: #1e3a5f; }
     .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
-    .badge-stop      { background: #f3f4f6; color: #374151; }
-    .badge-bring     { background: #fef9c3; color: #854d0e; }
-    .badge-sent      { background: #d1fae5; color: #065f46; }
-    .badge-drafted   { background: #dbeafe; color: #1e40af; }
-    .badge-error     { background: #fee2e2; color: #991b1b; }
-    .badge-duplicate { background: #fef3c7; color: #92400e; }
-    .badge-wow-new     { background: #dbeafe; color: #1d4ed8; }
-    .badge-wow-same    { background: #f0fdf4; color: #15803d; }
-    .badge-wow-changed { background: #fef9c3; color: #a16207; }
-    .card-total { text-align: right; flex-shrink: 0; }
-    .card-total-amount { font-size: 17px; font-weight: 800; color: #1e3a5f; }
-    .card-total-label  { font-size: 11px; color: #9ca3af; }
+    .badge-bring { background: #fef9c3; color: #854d0e; }
 
-    /* Conflict / error bars */
+        /* Conflict / error bars */
     .conflict-bar { background: #fffbeb; border-top: 1px solid #fde68a; padding: 8px 14px; font-size: 12px; color: #92400e; }
     .card-error   { background: #fef2f2; border-top: 1px solid #fca5a5; padding: 8px 14px; font-size: 12px; color: #991b1b; }
 
@@ -846,38 +840,67 @@ function getSardelliPO(order) {
 }
 
 // ── Render a single card ────────────────────────────────────────────────────────
-function renderCard(order) {
+function renderRow(order) {
   const isSent      = order.status === 'sent';
   const isDrafted   = order.status === 'drafted';
   const isError     = order.status === 'error';
   const isDuplicate = order.status === 'duplicate';
-  const hasDfee     = order.deliveryFee > 0;
+  const isPending   = order.status === 'pending';
   const ro          = isSent ? 'readonly disabled' : '';
   const autoExpand  = getFeature('autoExpand');
 
-  let cls = 'card';
-  if (!order.squareConflict && order.status === 'pending') cls += ' selected';
-  if (order.squareConflict && order.status === 'pending')  cls += ' has-conflict';
-  if (isDrafted)   cls += ' status-drafted';
-  if (isSent)      cls += ' status-sent';
-  if (isError)     cls += ' status-error';
-  if (isDuplicate) cls += ' status-duplicate';
+  let rowClass = 'order-row';
+  if (isDrafted)   rowClass += ' status-drafted';
+  if (isSent)      rowClass += ' status-sent';
+  if (isError)     rowClass += ' status-error';
+  if (isDuplicate) rowClass += ' status-duplicate';
 
-  const stopBadge   = (!isSent && order.stopNum !== null) ? `<span class="badge badge-stop">Stop ${order.stopNum}</span>` : '';
-  const bringBadge  = (!isSent && order.bringInvoice) ? `<span class="badge badge-bring">📄 Print invoice</span>` : '';
-  const statusBadge = isDrafted   ? `<span class="badge badge-drafted">Draft created</span>`
-                    : isDuplicate ? `<span class="badge badge-duplicate">⚠ Duplicate</span>`
-                    : isError     ? `<span class="badge badge-error">Error</span>` : '';
+  // Customer cell
+  const bringIcon = (!isSent && order.bringInvoice) ? ' <span class="badge badge-bring" title="Bring printed invoice">📄</span>' : '';
+  const conflictIcon = order.squareConflict ? ' <span title="' + esc(order.squareConflict) + '" style="color:#dc2626">⚠</span>' : '';
+  const emailLine = order.customerEmail
+    ? `<div class="tbl-email">${esc(order.customerEmail)}</div>`
+    : `<div class="tbl-email no-email">⚠ No email on file</div>`;
+  const nameCell = `<div class="tbl-name">${esc(order.customerName)}${conflictIcon}${bringIcon}</div>${emailLine}`;
 
-  const invTitleLine = `<div class="card-inv-title"><span style="color:#9ca3af;font-weight:600">Title:</span> ${esc(order.invoiceTitle || '—')}</div>`;
-  const sqIdLine     = getFeature('showSqId') && order.squareCustomerId ? `<div class="card-sq-id">SQ: ${esc(order.squareCustomerId)}</div>` : '';
+  // Amount cell
+  const amountCell = `<span class="tbl-amount" id="hdrTotal-${order.id}">$${order.total.toFixed(2)}</span>`;
 
-  const wowBadgeAndPanel = buildWowHtml(order);
+  // Stop # cell
+  const stopCell = order.stopNum !== null ? order.stopNum : '—';
 
-  const sardilli = getSardelliPO(order);
-  const sardinWarning = sardilli && sardilli.warning ? `<div class="conflict-bar">🐟 ${esc(sardilli.warning)}</div>` : '';
-  const sardinPoLine  = sardilli && sardilli.poNumber && !sardilli.warning ? `<span class="badge" style="background:#d1fae5;color:#065f46">PO #${esc(sardilli.poNumber)}</span>` : '';
+  // Invoice Sent cell
+  let invSentCell;
+  if ((isDrafted || isSent) && order.squareInvoiceNumber) {
+    const link = order.squareInvoiceUrl
+      ? `<a href="${esc(order.squareInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">${esc(order.squareInvoiceNumber)}</a>`
+      : esc(order.squareInvoiceNumber);
+    invSentCell = `<span class="tbl-inv-num">${link}</span>`;
+  } else if (isDrafted) {
+    invSentCell = '<span style="color:#f97316;font-size:12px;font-weight:600">Draft</span>';
+  } else if (isSent) {
+    invSentCell = '<span style="color:#16a34a;font-size:12px;font-weight:600">✓</span>';
+  } else {
+    invSentCell = '<span style="color:#d1d5db">—</span>';
+  }
 
+  // Invoice Paid cell
+  const sqStatus = order.squareStatus || '';
+  let invPaidCell;
+  if (sqStatus === 'PAID') {
+    invPaidCell = '<span class="tbl-paid paid">✓ Paid</span>';
+  } else if (sqStatus === 'PARTIALLY_PAID') {
+    invPaidCell = '<span class="tbl-paid partial">Partial</span>';
+  } else if (isSent || isDrafted) {
+    invPaidCell = '<span class="tbl-paid unpaid">Unpaid</span>';
+  } else {
+    invPaidCell = '<span style="color:#d1d5db">—</span>';
+  }
+
+  // Order Fulfilled cell
+  const fulfilledCell = order.fulfillmentDate ? esc(order.fulfillmentDate) : '—';
+
+  // Line items for expanded detail
   const liRows = order.lineItems.map((li, i) => {
     const liStatus    = (li.status || '').toLowerCase();
     const isPackedOut = liStatus.includes('packed') || li.status === 'Y';
@@ -886,51 +909,56 @@ function renderCard(order) {
     return `
     <div class="line-item">
       <div class="li-name"${nameStyle}>${esc(li.name)}</div>
-      <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"                    ${ro} oninput="recomputeCard('${order.id}')">
-      <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}"   ${ro} oninput="recomputeCard('${order.id}')">
+      <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"                  ${ro} oninput="recomputeCard('${order.id}')">
+      <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}" ${ro} oninput="recomputeCard('${order.id}')">
       <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
-    </div>`;}).join('');
+    </div>`;
+  }).join('');
 
-  const invNumLine = (isDrafted || isSent) && order.squareInvoiceNumber
-    ? `<div class="card-inv-title"><span style="color:#9ca3af;font-weight:600">Invoice #:</span> ${esc(order.squareInvoiceNumber)}</div>` : '';
+  const hasDfee = order.deliveryFee > 0;
   const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
-    ? `<a class="inv-link" href="${order.squareInvoiceUrl}" target="_blank">↗ View in Square</a>` : '';
+    ? `<a class="inv-link" href="${esc(order.squareInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">↗ View in Square</a>` : '';
   const dupLink = isDuplicate && order.existingInvoiceUrl
-    ? `<a class="inv-link" href="${order.existingInvoiceUrl}" target="_blank">↗ View existing</a>` : '';
+    ? `<a class="inv-link" href="${esc(order.existingInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">↗ View existing</a>` : '';
 
-  const bodyClass = autoExpand ? 'card-body' : 'card-body closed';
-  const toggleTxt = autoExpand ? '▾ Hide items' : '▸ Show items';
+  const sardilli = getSardelliPO(order);
+  const sardinWarning = sardilli && sardilli.warning ? `<div class="conflict-bar">🐟 ${esc(sardilli.warning)}</div>` : '';
 
-  return `
-    <div class="${cls}" id="card-${order.id}">
-      <div class="card-header" onclick="toggleExpand('${order.id}')">
+  const wowHtml = buildWowHtml(order);
+
+  const sqIdLine = getFeature('showSqId') && order.squareCustomerId
+    ? `<div style="font-size:11px;color:#9ca3af;font-family:monospace;padding:4px 0 0">SQ: ${esc(order.squareCustomerId)}</div>` : '';
+
+  const invTitleLine = `<div style="font-size:11px;color:#9ca3af;padding:2px 0 0"><span style="font-weight:700">Title:</span> ${esc(order.invoiceTitle || '—')}</div>`;
+
+  const detailDisplay = autoExpand ? '' : 'display:none';
+
+  const mainRow = `
+    <tr class="${rowClass}" id="row-${order.id}" onclick="toggleExpand('${order.id}')">
+      <td onclick="event.stopPropagation()" style="width:32px;text-align:center">
         <input class="card-checkbox" type="checkbox" id="cb-${order.id}"
-               ${!order.squareConflict && order.status === 'pending' ? 'checked' : ''}
+               ${!order.squareConflict && isPending ? 'checked' : ''}
                ${isSent ? 'disabled' : ''}
-               onclick="event.stopPropagation();toggleCard('${order.id}')">
-        <div class="card-meta">
-          <div class="card-name">${esc(order.customerName)}</div>
-          <div class="card-email">${order.customerEmail
-            ? `<span style="color:#9ca3af;font-weight:600">Send to:</span> ${esc(order.customerEmail)}`
-            : `<span style="color:#dc2626;font-weight:600">⚠ No email on file</span>`}</div>
-          ${invTitleLine}
-          ${sqIdLine}
-          ${invNumLine}
-          <div class="card-badges">${stopBadge}${bringBadge}${statusBadge}${sardinPoLine}</div>
-          <div class="card-badges" style="margin-top:3px">${wowBadgeAndPanel}</div>
-        </div>
-        <div class="card-total">
-          <div class="card-total-amount" id="hdrTotal-${order.id}">$${order.total.toFixed(2)}</div>
-          <div class="card-total-label">${order.lineItems.length} item${order.lineItems.length !== 1 ? 's' : ''}</div>
-        </div>
-      </div>
-      ${order.squareConflict ? `<div class="conflict-bar">⚠️ ${esc(order.squareConflict)}</div>` : ''}
-      ${sardinWarning}
-      ${isError     ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
-      ${isDuplicate ? `<div class="conflict-bar">⚠ ${esc(order.error || '')} ${dupLink}</div>` : ''}
-      <button class="card-expand-toggle" id="toggle-${order.id}" onclick="toggleExpand('${order.id}')">${toggleTxt}</button>
-      <div class="${bodyClass}" id="body-${order.id}">
-        <div class="line-items">
+               onclick="toggleCard('${order.id}')">
+      </td>
+      <td>${nameCell}</td>
+      <td>${amountCell}</td>
+      <td class="tbl-center">${stopCell}</td>
+      <td class="tbl-center">${invSentCell}</td>
+      <td class="tbl-center">${invPaidCell}</td>
+      <td class="tbl-center" style="font-size:12px;color:#6b7280">${fulfilledCell}</td>
+      <td class="tbl-expand-btn" id="expbtn-${order.id}">▸</td>
+    </tr>`;
+
+  const detailRow = `
+    <tr class="order-detail-row" id="body-${order.id}" style="${detailDisplay}">
+      <td colspan="8">
+        ${order.squareConflict ? `<div class="conflict-bar">⚠️ ${esc(order.squareConflict)}</div>` : ''}
+        ${sardinWarning}
+        ${isError     ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
+        ${isDuplicate ? `<div class="conflict-bar">⚠ ${esc(order.error || '')} ${dupLink}</div>` : ''}
+        <div class="line-items" style="padding:10px 16px">
+          <div style="font-size:11px;color:#9ca3af;padding:4px 0 6px">${invTitleLine}${sqIdLine}</div>
           <div class="line-item" style="font-size:11px;font-weight:700;color:#9ca3af;border-bottom:1px solid #e5e7eb;padding-bottom:4px">
             <div>PRODUCT</div><div style="text-align:right">QTY</div><div style="text-align:right">UNIT $</div><div style="text-align:right">TOTAL</div>
           </div>
@@ -942,9 +970,13 @@ function renderCard(order) {
           ${hasDfee ? `<span>Delivery fee: <strong>$${order.deliveryFee.toFixed(2)}</strong></span>` : ''}
           <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
         </div>
-      </div>
-    </div>`;
+        ${wowHtml}
+      </td>
+    </tr>`;
+
+  return mainRow + detailRow;
 }
+
 
 function isSectionCollapsed(id) {
   const s = JSON.parse(localStorage.getItem('sectionCollapsed') || '{}');
@@ -970,11 +1002,12 @@ function initSectionChevrons() {
 }
 
 function toggleExpand(id) {
-  const body = document.getElementById(`body-${id}`);
-  const btn  = document.getElementById(`toggle-${id}`);
-  if (!body) return;
-  const closed = body.classList.toggle('closed');
-  if (btn) btn.textContent = closed ? '▸ Show items' : '▾ Hide items';
+  const detailRow = document.getElementById('body-' + id);
+  const expandBtn = document.getElementById('expbtn-' + id);
+  if (!detailRow) return;
+  const isHidden = detailRow.style.display === 'none' || detailRow.style.display === '';
+  detailRow.style.display = isHidden ? 'table-row' : 'none';
+  if (expandBtn) expandBtn.textContent = isHidden ? '▾' : '▸';
 }
 function toggleCard(id) {
   const card = document.getElementById(`card-${id}`);
@@ -1027,9 +1060,18 @@ function renderOrders() {
   if (!pending.length) {
     html += `<div style="padding:16px;text-align:center;color:#9ca3af;font-size:14px;background:#fff;border-radius:8px;border:1px dashed #e5e7eb">No pending orders${drafts.length ? ' — all drafted!' : '.'}</div>`;
   } else {
-    html += `<div class="orders-grid">`;
-    pending.forEach(o => { html += renderCard(o); });
-    html += `</div>`;
+    html += `<table class="orders-table"><thead><tr>
+      <th style="width:32px"></th>
+      <th>Customer</th>
+      <th>Amount</th>
+      <th class="th-center">Stop #</th>
+      <th class="th-center">Invoice Sent</th>
+      <th class="th-center">Invoice Paid</th>
+      <th class="th-center">Order Fulfilled</th>
+      <th style="width:28px"></th>
+    </tr></thead><tbody>`;
+    pending.forEach(o => { html += renderRow(o); });
+    html += `</tbody></table>`;
   }
 
   // ── Section 2: Upcoming (not-in-today + skipped) ───────────────────────────
@@ -1080,9 +1122,18 @@ function renderOrders() {
       </div>
     </div>`;
     html += `<div class="section-body${isSectionCollapsed('drafts') ? ' collapsed' : ''}" id="sec-body-drafts">`;
-    html += `<div class="orders-grid">`;
-    [...drafts, ...errors].forEach(o => { html += renderCard(o); });
-    html += `</div></div>`;
+    html += `<table class="orders-table"><thead><tr>
+      <th style="width:32px"></th>
+      <th>Customer</th>
+      <th>Amount</th>
+      <th class="th-center">Stop #</th>
+      <th class="th-center">Invoice Sent</th>
+      <th class="th-center">Invoice Paid</th>
+      <th class="th-center">Order Fulfilled</th>
+      <th style="width:28px"></th>
+    </tr></thead><tbody>`;
+    [...drafts, ...errors].forEach(o => { html += renderRow(o); });
+    html += `</tbody></table></div>`;
   }
 
   // ── Section 4: Sent ────────────────────────────────────────────────────────
@@ -1094,9 +1145,18 @@ function renderOrders() {
       <span class="section-count" style="margin-left:4px">${sent.length} invoices · $${sentTotal.toFixed(2)}</span>
     </div>`;
     html += `<div class="section-body${isSectionCollapsed('sent') ? ' collapsed' : ''}" id="sec-body-sent">`;
-    html += `<div class="orders-grid">`;
-    sent.forEach(o => { html += renderCard(o); });
-    html += `</div></div>`;
+    html += `<table class="orders-table"><thead><tr>
+      <th style="width:32px"></th>
+      <th>Customer</th>
+      <th>Amount</th>
+      <th class="th-center">Stop #</th>
+      <th class="th-center">Invoice Sent</th>
+      <th class="th-center">Invoice Paid</th>
+      <th class="th-center">Order Fulfilled</th>
+      <th style="width:28px"></th>
+    </tr></thead><tbody>`;
+    sent.forEach(o => { html += renderRow(o); });
+    html += `</tbody></table></div>`;
   }
 
   stateOrders.innerHTML = html;
@@ -1183,6 +1243,7 @@ async function runSquareCheck() {
       if (r.squareInvoiceUrl)    order.squareInvoiceUrl    = r.squareInvoiceUrl;
       if (r.squareInvoiceNumber) order.squareInvoiceNumber = r.squareInvoiceNumber;
       if (r.squareOrderId)       order.squareOrderId       = r.squareOrderId;
+      if (r.squareStatus)        order.squareStatus        = r.squareStatus;
       // Always apply email from Square — overrides the AppSheet gap
       if (r.customerEmail)       order.customerEmail       = r.customerEmail;
       anyUpdate = true;
