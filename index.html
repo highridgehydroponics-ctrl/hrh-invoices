@@ -936,6 +936,29 @@ function renderCard(order) {
     </div>`;
 }
 
+function isSectionCollapsed(id) {
+  const s = JSON.parse(localStorage.getItem('sectionCollapsed') || '{}');
+  return !!s[id];
+}
+
+function toggleSection(id) {
+  const body    = document.getElementById('sec-body-' + id);
+  const chevron = document.getElementById('sec-chev-' + id);
+  if (!body) return;
+  const collapsed = body.classList.toggle('collapsed');
+  if (chevron) chevron.classList.toggle('collapsed', collapsed);
+  const s = JSON.parse(localStorage.getItem('sectionCollapsed') || '{}');
+  s[id] = collapsed;
+  localStorage.setItem('sectionCollapsed', JSON.stringify(s));
+}
+
+function initSectionChevrons() {
+  ['pending','upcoming','drafts','sent'].forEach(id => {
+    const chev = document.getElementById('sec-chev-' + id);
+    if (chev && isSectionCollapsed(id)) chev.classList.add('collapsed');
+  });
+}
+
 function toggleExpand(id) {
   const body = document.getElementById(`body-${id}`);
   const btn  = document.getElementById(`toggle-${id}`);
