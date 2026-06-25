@@ -69,13 +69,14 @@
     .state-box p { font-size: 15px; }
 
     /* ── Section headers ── */
-    .section-header { display: flex; align-items: center; gap: 12px; margin: 24px 0 10px; cursor: pointer; user-select: none; }
-    .section-header:hover .section-label { color: #1e3a5f; }
-    .section-chevron { font-size: 13px; color: #9ca3af; transition: transform .2s; flex-shrink: 0; }
+    .section-header { display: flex; align-items: center; gap: 10px; margin: 24px 0 10px; cursor: pointer; user-select: none; }
+    .section-header:hover .section-label { color: #162d4a; }
+    .section-chevron { font-size: 15px; color: #1e3a5f; transition: transform .2s; flex-shrink: 0; font-weight: 700; }
     .section-chevron.collapsed { transform: rotate(-90deg); }
     .section-body.collapsed { display: none; }
-    .section-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; flex: 1; }
-    .section-count { font-size: 12px; font-weight: 600; color: #9ca3af; }
+    .section-label { font-size: 17px; font-weight: 800; letter-spacing: .01em; text-transform: uppercase; color: #1e3a5f; }
+    .section-count { font-size: 13px; font-weight: 600; color: #6b7280; }
+    .section-spacer { flex: 1; }
     .section-actions { display: flex; gap: 6px; }
 
     /* ── Orders grid ── */
@@ -1019,6 +1020,7 @@ function renderOrders() {
     <span class="section-chevron" id="sec-chev-pending">▾</span>
     <span class="section-label">Today's Orders</span>
     <span class="section-count">${pending.length} pending</span>
+    <div class="section-spacer"></div>
     <div class="section-actions" onclick="event.stopPropagation()">
       <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select all</button>
       <button class="btn btn-sm btn-ghost" onclick="deselectAllSection('pending')">Deselect</button>
@@ -1075,6 +1077,7 @@ function renderOrders() {
       <span class="section-chevron" id="sec-chev-drafts">▾</span>
       <span class="section-label">Drafts</span>
       <span class="section-count">${drafts.length} ready to send${errors.length ? `, ${errors.length} error` : ''}</span>
+      <div class="section-spacer"></div>
       <div class="section-actions" onclick="event.stopPropagation()">
         <button class="btn btn-sm btn-ghost" onclick="selectAllDrafted()">Select all</button>
         <button class="btn btn-sm btn-ghost" onclick="deselectAllSection('drafted')">Deselect</button>
@@ -1092,7 +1095,7 @@ function renderOrders() {
     html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('sent')">
       <span class="section-chevron" id="sec-chev-sent">▾</span>
       <span class="section-label">Sent</span>
-      <span class="section-count">${sent.length} invoices · $${sentTotal.toFixed(2)}</span>
+      <span class="section-count" style="margin-left:4px">${sent.length} invoices · $${sentTotal.toFixed(2)}</span>
     </div>`;
     html += `<div class="section-body${isSectionCollapsed('sent') ? ' collapsed' : ''}" id="sec-body-sent">`;
     html += `<div class="orders-grid">`;
