@@ -981,7 +981,7 @@ function renderOrders() {
   // ── Section 1: Invoices (pending) ──────────────────────────────────────────
   html += `<div class="section-header" onclick="toggleSection('pending')">
     <span class="section-chevron" id="sec-chev-pending">▾</span>
-    <span class="section-label">${state.date || 'Today'} Orders</span>
+    <span class="section-label">Today's Orders</span>
     <span class="section-count">${pending.length} pending</span>
     <div class="section-actions" onclick="event.stopPropagation()">
       <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select all</button>
