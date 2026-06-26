@@ -616,7 +616,6 @@ function renderAddressBook() {
             <button class="ab-copy" onclick="copyText('${esc(c.squareCustomerId)}')">Copy</button>
           </div>` : ''}
         <div class="ab-field"><span class="ab-label">Bring invoice</span><span style="font-size:13px">${c.bringInvoice ? '📄 Yes — bring printed invoice' : 'No'}</span></div>
-        ${c.lastSeen ? `<div class="ab-field"><span class="ab-label">Last seen</span><span style="font-size:13px">${esc(c.lastSeen)}</span></div>` : ''}
       </div>
       <div class="ab-invoices">
         <div class="ab-inv-label">Invoice history${c.invoices?.length ? ` (${c.invoices.length})` : ''}</div>
@@ -782,7 +781,7 @@ function buildWowHtml(order) {
   if (!wow || !getFeature('showWow')) return '';
 
   const badgeHtml = wow.status === 'new'
-    ? `<span class="badge badge-wow-new">🆕 New customer</span>`
+    ? `<span class="badge badge-wow-new" title="This customer did not have an order last week — no week-over-week comparison available">🆕 First order this week</span>`
     : wow.status === 'changed'
       ? `<span class="badge badge-wow-changed">⚠ Changed ${wow.deltaTotal > 0 ? '+' : ''}$${wow.deltaTotal.toFixed(2)}</span>`
       : `<span class="badge badge-wow-same">✓ Same as last week</span>`;
@@ -927,9 +926,9 @@ function renderRow(order) {
   const wowHtml = buildWowHtml(order);
 
   const sqIdLine = getFeature('showSqId') && order.squareCustomerId
-    ? `<div style="font-size:11px;color:#9ca3af;font-family:monospace;padding:4px 0 0">SQ: ${esc(order.squareCustomerId)}</div>` : '';
+    ? `<div style="font-size:12px;color:#374151;font-family:monospace;padding:4px 0 0"><strong>Square Customer ID:</strong> ${esc(order.squareCustomerId)}</div>` : '';
 
-  const invTitleLine = `<div style="font-size:11px;color:#9ca3af;padding:2px 0 0"><span style="font-weight:700">Title:</span> ${esc(order.invoiceTitle || '—')}</div>`;
+  const invTitleLine = `<div style="font-size:12px;color:#111;padding:2px 0 0"><span style="font-weight:700;color:#374151">Title:</span> ${esc(order.invoiceTitle || '—')}</div>`;
 
   const detailDisplay = autoExpand ? '' : 'display:none';
 
@@ -958,8 +957,8 @@ function renderRow(order) {
         ${isError     ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
         ${isDuplicate ? `<div class="conflict-bar">⚠ ${esc(order.error || '')} ${dupLink}</div>` : ''}
         <div class="line-items" style="padding:10px 16px">
-          <div style="font-size:11px;color:#9ca3af;padding:4px 0 6px">${invTitleLine}${sqIdLine}</div>
-          <div class="line-item" style="font-size:11px;font-weight:700;color:#9ca3af;border-bottom:1px solid #e5e7eb;padding-bottom:4px">
+          <div style="font-size:12px;color:#374151;padding:4px 0 6px">${invTitleLine}${sqIdLine}</div>
+          <div class="line-item" style="font-size:11px;font-weight:700;color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:4px">
             <div>PRODUCT</div><div style="text-align:right">QTY</div><div style="text-align:right">UNIT $</div><div style="text-align:right">TOTAL</div>
           </div>
           ${liRows}
@@ -1048,7 +1047,7 @@ function renderOrders() {
   html += `<div class="section-header" onclick="toggleSection('pending')">
     <span class="section-chevron" id="sec-chev-pending">▾</span>
     <span class="section-label">Today's Orders</span>
-    <span class="section-count">${pending.length} pending</span>
+    <span class="section-count">${state.orders.length} orders · $${state.orders.reduce((s,o)=>s+o.total,0).toFixed(2)}</span>
     <div class="section-spacer"></div>
     <div class="section-actions" onclick="event.stopPropagation()">
       <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select all</button>
@@ -1057,22 +1056,29 @@ function renderOrders() {
   </div>`;
   html += `<div class="section-body${isSectionCollapsed('pending') ? ' collapsed' : ''}" id="sec-body-pending">`;
 
-  if (!pending.length) {
-    html += `<div style="padding:16px;text-align:center;color:#9ca3af;font-size:14px;background:#fff;border-radius:8px;border:1px dashed #e5e7eb">No pending orders${drafts.length ? ' — all drafted!' : '.'}</div>`;
+  if (!state.orders.length) {
+    html += `<div style="padding:16px;text-align:center;color:#9ca3af;font-size:14px;background:#fff;border-radius:8px;border:1px dashed #e5e7eb">No orders for this date.</div>`;
   } else {
     html += `<table class="orders-table"><thead><tr>
       <th style="width:32px"></th>
       <th>Customer</th>
       <th>Amount</th>
       <th class="th-center">Stop #</th>
-      <th class="th-center">Invoice Sent</th>
+      <th class="th-center">Invoice #</th>
       <th class="th-center">Invoice Paid</th>
       <th class="th-center">Order Fulfilled</th>
       <th style="width:28px"></th>
     </tr></thead><tbody>`;
-    pending.forEach(o => { html += renderRow(o); });
+    const allSorted = [
+      ...state.orders.filter(o => o.status === 'pending' || o.status === 'duplicate'),
+      ...state.orders.filter(o => o.status === 'drafted'),
+      ...state.orders.filter(o => o.status === 'sent'),
+      ...state.orders.filter(o => o.status === 'error'),
+    ];
+    allSorted.forEach(o => { html += renderRow(o); });
     html += `</tbody></table>`;
   }
+  html += `</div>`; // close sec-body-pending
 
   // ── Section 2: Upcoming (not-in-today + skipped) ───────────────────────────
   if (getFeature('showNotInToday') && (state.notInToday.length || state.skipped.length)) {
@@ -1109,57 +1115,8 @@ function renderOrders() {
   }
 
   html += `</div>`; // close sec-body-upcoming
-  // ── Section 3: Drafts ──────────────────────────────────────────────────────
-  if (drafts.length || errors.length) {
-    html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('drafts')">
-      <span class="section-chevron" id="sec-chev-drafts">▾</span>
-      <span class="section-label">Drafts</span>
-      <span class="section-count">${drafts.length} ready to send${errors.length ? `, ${errors.length} error` : ''}</span>
-      <div class="section-spacer"></div>
-      <div class="section-actions" onclick="event.stopPropagation()">
-        <button class="btn btn-sm btn-ghost" onclick="selectAllDrafted()">Select all</button>
-        <button class="btn btn-sm btn-ghost" onclick="deselectAllSection('drafted')">Deselect</button>
-      </div>
-    </div>`;
-    html += `<div class="section-body${isSectionCollapsed('drafts') ? ' collapsed' : ''}" id="sec-body-drafts">`;
-    html += `<table class="orders-table"><thead><tr>
-      <th style="width:32px"></th>
-      <th>Customer</th>
-      <th>Amount</th>
-      <th class="th-center">Stop #</th>
-      <th class="th-center">Invoice Sent</th>
-      <th class="th-center">Invoice Paid</th>
-      <th class="th-center">Order Fulfilled</th>
-      <th style="width:28px"></th>
-    </tr></thead><tbody>`;
-    [...drafts, ...errors].forEach(o => { html += renderRow(o); });
-    html += `</tbody></table></div>`;
-  }
 
-  // ── Section 4: Sent ────────────────────────────────────────────────────────
-  if (sent.length) {
-    const sentTotal = sent.reduce((s, o) => s + o.total, 0);
-    html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('sent')">
-      <span class="section-chevron" id="sec-chev-sent">▾</span>
-      <span class="section-label">Sent</span>
-      <span class="section-count" style="margin-left:4px">${sent.length} invoices · $${sentTotal.toFixed(2)}</span>
-    </div>`;
-    html += `<div class="section-body${isSectionCollapsed('sent') ? ' collapsed' : ''}" id="sec-body-sent">`;
-    html += `<table class="orders-table"><thead><tr>
-      <th style="width:32px"></th>
-      <th>Customer</th>
-      <th>Amount</th>
-      <th class="th-center">Stop #</th>
-      <th class="th-center">Invoice Sent</th>
-      <th class="th-center">Invoice Paid</th>
-      <th class="th-center">Order Fulfilled</th>
-      <th style="width:28px"></th>
-    </tr></thead><tbody>`;
-    sent.forEach(o => { html += renderRow(o); });
-    html += `</tbody></table></div>`;
-  }
-
-  stateOrders.innerHTML = html;
+    stateOrders.innerHTML = html;
   initSectionChevrons();
   toolbar.style.display = '';
   toolbar.dataset.loaded = '1';
