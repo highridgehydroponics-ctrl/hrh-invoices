@@ -890,8 +890,9 @@ function renderRow(order) {
         <div class="card-footer">
           ${invLink}${dupLink}
           <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
-          ${hasDfee ? `<span>Delivery fee: <strong>$${order.deliveryFee.toFixed(2)}</strong></span>` : ''}
+          <span id="dfee-${order.id}" style="${hasDfee ? '' : 'display:none'}">Delivery fee: <strong>$5.00</strong></span>
           <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
+          ${!isSent ? `<button id="dfeebtn-${order.id}" class="btn btn-sm btn-ghost" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();toggleDeliveryFee('${order.id}')">${hasDfee ? '✕ Remove fee' : '＋ Add $5 fee'}</button>` : ''}
         </div>
         ${wowHtml}
       </td>
@@ -1217,6 +1218,23 @@ function applySardelliPO() {
   sardilli.invoiceTitle = poNum ? `${baseDate} Invoice - PO #${poNum}` : `${baseDate} Invoice`;
   updateSardelliPreview(sardilli, poNum);
   patchCard(sardilli);
+}
+// ── Delivery fee toggle ──────────────────────────────────────────────────────────
+function toggleDeliveryFee(orderId) {
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order) return;
+  if (order._origDeliveryFee === undefined) order._origDeliveryFee = order.deliveryFee;
+  order.deliveryFee = order.deliveryFee > 0 ? 0 : (order._origDeliveryFee > 0 ? order._origDeliveryFee : 5);
+  order.total = Math.round((order.subtotal + order.deliveryFee) * 100) / 100;
+  const hdrEl    = document.getElementById(`hdrTotal-${orderId}`);
+  const totEl    = document.getElementById(`tot-${orderId}`);
+  const dfeeEl   = document.getElementById(`dfee-${orderId}`);
+  const dfeeBtnEl = document.getElementById(`dfeebtn-${orderId}`);
+  if (hdrEl)    hdrEl.textContent    = `$${order.total.toFixed(2)}`;
+  if (totEl)    totEl.textContent    = `$${order.total.toFixed(2)}`;
+  if (dfeeEl)   dfeeEl.style.display = order.deliveryFee > 0 ? '' : 'none';
+  if (dfeeBtnEl) dfeeBtnEl.textContent = order.deliveryFee > 0 ? '✕ Remove fee' : '＋ Add $5 fee';
+  updateToolbar();
 }
 // ── Init ─────────────────────────────────────────────────────────────────────────
 loadSettings();
