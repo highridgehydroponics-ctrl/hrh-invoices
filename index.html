@@ -780,6 +780,7 @@ function renderRow(order) {
   const isError     = order.status === 'error';
   const isDuplicate = order.status === 'duplicate';
   const isPending   = order.status === 'pending';
+  const isPickup    = order.fulfillmentType === 'pickup';
   const ro          = isSent ? 'readonly disabled' : '';
   const autoExpand  = getFeature('autoExpand');
 
@@ -849,7 +850,6 @@ function renderRow(order) {
     </div>`;
   }).join('');
   const hasDfee   = order.deliveryFee > 0;
-  const isPickup  = order.fulfillmentType === 'pickup';
   const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
     ? `<a class="inv-link" href="${esc(order.squareInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">↗ View in Square</a>` : '';
   const dupLink = isDuplicate && order.existingInvoiceUrl
