@@ -251,6 +251,7 @@
       <input type="date" id="datePicker" />
     </div>
     <button class="btn btn-load" id="btnLoad">Load orders</button>
+    <button class="btn btn-load" id="btnRefresh" style="display:none;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);padding:8px 12px" title="Refresh (re-load same date)">↺</button>
   </div>
 </div>
 <!-- ── Tab nav ── -->
@@ -623,6 +624,7 @@ function switchTab(name) {
   if (name === 'addressbook') renderAddressBook();
 }
 document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+document.getElementById('btnRefresh').addEventListener('click', () => document.getElementById('btnLoad').click());
 document.getElementById('btnSaveSettings').addEventListener('click', saveSettings);
 // ── DOM refs ────────────────────────────────────────────────────────────────────
 const toolbar      = document.getElementById('toolbar');
@@ -797,7 +799,8 @@ function renderRow(order) {
   const sentToLine = order.customerEmail
     ? `<div class="tbl-email"><span style="font-size:10px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.03em">Sent to:</span> ${esc(order.customerEmail)}</div>`
     : `<div class="tbl-email no-email">⚠ No email on file</div>`;
-  const nameCell = `<div class="tbl-name">${esc(order.customerName)}${conflictIcon}</div>${sqIdInCell}${sentToLine}`;
+  const pickupBadge = isPickup ? ` <span style="font-size:10px;font-weight:700;color:#7c3aed;background:#ede9fe;padding:1px 5px;border-radius:4px;vertical-align:middle">PICKUP</span>` : '';
+  const nameCell = `<div class="tbl-name">${esc(order.customerName)}${conflictIcon}${pickupBadge}</div>${sqIdInCell}${sentToLine}`;
 
   // Amount cell
   const amountCell = `<span class="tbl-amount" id="hdrTotal-${order.id}">$${order.total.toFixed(2)}</span>`;
@@ -845,7 +848,8 @@ function renderRow(order) {
       <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
     </div>`;
   }).join('');
-  const hasDfee = order.deliveryFee > 0;
+  const hasDfee   = order.deliveryFee > 0;
+  const isPickup  = order.fulfillmentType === 'pickup';
   const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
     ? `<a class="inv-link" href="${esc(order.squareInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">↗ View in Square</a>` : '';
   const dupLink = isDuplicate && order.existingInvoiceUrl
@@ -1061,6 +1065,7 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
     renderOrders();
     showSardelliPOBanner();
     setStatus('', '');
+    document.getElementById('btnRefresh').style.display = '';
     showToast(`Loaded ${state.orders.length} orders for ${date}${monthEndMode ? ' (month-end mode)' : ''}`, 'green');
     runSquareCheck();
   } catch (e) {
