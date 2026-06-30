@@ -251,7 +251,10 @@
       <input type="date" id="datePicker" />
     </div>
     <button class="btn btn-load" id="btnLoad">Load orders</button>
-    <button class="btn btn-load" id="btnRefresh" style="display:none;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);padding:8px 12px" title="Refresh (re-load same date)">↺</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+      <button class="btn btn-load" id="btnRefresh" style="display:none;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);padding:8px 12px" title="Refresh (re-load same date)">↺</button>
+      <div id="lastRefreshTime" style="display:none;font-size:10px;color:rgba(255,255,255,.55);white-space:nowrap"></div>
+    </div>
   </div>
 </div>
 <!-- ── Tab nav ── -->
@@ -1066,6 +1069,10 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
     showSardelliPOBanner();
     setStatus('', '');
     document.getElementById('btnRefresh').style.display = '';
+    const _now = new Date();
+    const _ts  = document.getElementById('lastRefreshTime');
+    _ts.style.display  = '';
+    _ts.textContent    = `Updated ${_now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}`;
     showToast(`Loaded ${state.orders.length} orders for ${date}${monthEndMode ? ' (month-end mode)' : ''}`, 'green');
     runSquareCheck();
   } catch (e) {
