@@ -539,15 +539,22 @@ function updateAddressBook(orders) {
   }
   localStorage.setItem('addressBook', JSON.stringify(book));
 }
-function updateAddressBookWithInvoices(sentOrders) {
+function updateAddressBookWithInvoices(orders) {
+  // Called after sending invoices AND after the Square check phase so that
+  // history builds automatically from Square data, not just from this session's sends.
   const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
-  for (const o of sentOrders) {
+  for (const o of orders) {
+    if (!o.squareInvoiceNumber) continue;
     const key = o.squareCustomerId || `name:${o.customerName}`;
     if (!book[key]) continue;
     const date = (o.invoiceTitle || '').split(' ')[0] || '';
-    const already = book[key].invoices.some(inv => inv.date === date && inv.invoiceNumber === o.squareInvoiceNumber);
-    if (!already) {
-      book[key].invoices.unshift({ date, total: o.total, invoiceNumber: o.squareInvoiceNumber, squareInvoiceUrl: o.squareInvoiceUrl, status: 'sent' });
+    // Update in place if the same invoice number already recorded, else prepend
+    const existing = book[key].invoices.findIndex(inv => inv.invoiceNumber === o.squareInvoiceNumber);
+    const entry = { date, total: o.total, invoiceNumber: o.squareInvoiceNumber, squareInvoiceUrl: o.squareInvoiceUrl || null, status: o.squareStatus || o.status || 'sent' };
+    if (existing !== -1) {
+      book[key].invoices[existing] = entry; // refresh url / status in case it changed
+    } else {
+      book[key].invoices.unshift(entry);
     }
   }
   localStorage.setItem('addressBook', JSON.stringify(book));
@@ -615,6 +622,12 @@ function getDefaultDate() {
 }
 function toInputFmt(d)   { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function toDisplayFmt(iso) { const [y,m,d] = iso.split('-'); return `${m}/${d}/${y}`; }
+function toSectionLabel(iso) {
+  const [y,m,d] = iso.split('-').map(Number);
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dow = days[new Date(y, m-1, d).getDay()];
+  return `${dow} ${m}/${d}/${y} Orders`;
+}
 const picker = document.getElementById('datePicker');
 picker.value = toInputFmt(getDefaultDate());
 // ── Tab switching ───────────────────────────────────────────────────────────────
@@ -964,7 +977,7 @@ function renderOrders() {
   // ── Section: Today's Orders ─────────────────────────────────────────────────
   html += `<div class="section-header" onclick="toggleSection('pending')">
     <span class="section-chevron" id="sec-chev-pending">▾</span>
-    <span class="section-label">Today's Orders</span>
+    <span class="section-label">${toSectionLabel(picker.value)}</span>
     <span class="section-count">${state.orders.length} orders · $${state.orders.reduce((s,o)=>s+o.total,0).toFixed(2)}</span>
     <div class="section-spacer"></div>
     <div class="section-actions" onclick="event.stopPropagation()">
@@ -1115,6 +1128,8 @@ async function runSquareCheck() {
       renderOrders();
       initSectionChevrons();
       showSardelliPOBanner();
+      // Update address book with any invoice data found during the Square check
+      updateAddressBookWithInvoices(state.orders.filter(o => o.squareInvoiceNumber));
     }
   } catch (e) {
     console.warn('[square-check]', e.message);
