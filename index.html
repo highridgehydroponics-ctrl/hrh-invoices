@@ -825,7 +825,15 @@ function renderRow(order) {
     ? `<div class="tbl-email"><span style="font-size:10px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.03em">Sent to:</span> ${esc(order.customerEmail)}</div>`
     : `<div class="tbl-email no-email">⚠ No email on file</div>`;
   const pickupBadge = isPickup ? ` <span style="font-size:10px;font-weight:700;color:#7c3aed;background:#ede9fe;padding:1px 5px;border-radius:4px;vertical-align:middle">PICKUP</span>` : '';
-  const nameCell = `<div class="tbl-name">${esc(order.customerName)}${conflictIcon}${pickupBadge}</div>${sqIdInCell}${sentToLine}`;
+  const isCancelled = (order.appsheetStatus || '').toLowerCase() === 'customer cancelled order';
+  const statusBadge = order.appsheetStatus
+    ? (() => {
+        const s = order.appsheetStatus;
+        const [bg, fg] = isCancelled ? ['#fee2e2','#b91c1c'] : ['#f3f4f6','#374151'];
+        return `<span style="font-size:10px;font-weight:700;color:${fg};background:${bg};padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:middle">${esc(s).toUpperCase()}</span>`;
+      })()
+    : '';
+  const nameCell = `<div class="tbl-name">${esc(order.customerName)}${conflictIcon}${pickupBadge}${statusBadge}</div>${sqIdInCell}${sentToLine}`;
 
   // Amount cell
   const amountCell = `<span class="tbl-amount" id="hdrTotal-${order.id}">$${order.total.toFixed(2)}</span>`;
@@ -857,8 +865,8 @@ function renderRow(order) {
   } else {
     invPaidCell = '<span style="color:#d1d5db">—</span>';
   }
-  // Order Fulfilled cell
-  const fulfilledCell = order.fulfillmentDate ? esc(order.fulfillmentDate) : '—';
+  // Order Fulfilled cell — only show if the order is actually sent/fulfilled
+  const fulfilledCell = (isSent && order.fulfillmentDate) ? esc(order.fulfillmentDate) : '';
   // Line items for expanded detail
   const liRows = order.lineItems.map((li, i) => {
     const liStatus    = (li.status || '').toLowerCase();
@@ -889,8 +897,8 @@ function renderRow(order) {
     <tr class="${rowClass}" id="row-${order.id}" onclick="toggleExpand('${order.id}')">
       <td onclick="event.stopPropagation()" style="width:32px;text-align:center">
         <input class="card-checkbox" type="checkbox" id="cb-${order.id}"
-               ${!order.squareConflict && isPending ? 'checked' : ''}
-               ${isSent ? 'disabled' : ''}
+               ${!order.squareConflict && isPending && !isCancelled ? 'checked' : ''}
+               ${isSent || isCancelled ? 'disabled' : ''}
                onclick="toggleCard('${order.id}')">
       </td>
       <td>${nameCell}</td>
