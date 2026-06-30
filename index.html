@@ -143,6 +143,13 @@
     .card-expand-toggle:hover { background: #fafafa; color: #1e3a5f; }
     .inv-link { font-size: 12px; color: #3b82f6; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
     .inv-link:hover { text-decoration: underline; }
+    /* ── Date section + sub-groups ── */
+    .date-section-hdr { display:flex; align-items:center; gap:10px; padding:12px 0 10px; }
+    .orders-groups-card { background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:4px; }
+    .sub-section-hdr { display:flex; align-items:center; gap:8px; padding:10px 14px; background:#fff; cursor:pointer; user-select:none; }
+    .sub-section-hdr:hover { background:#fafafa; }
+    .sub-section-label { font-size:11px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
+    .sub-section-count { font-size:12px; color:#9ca3af; font-weight:500; }
     /* Mini cards */
     .mini-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
     .mini-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
@@ -976,42 +983,72 @@ function renderOrders() {
   stateLoading.style.display = 'none';
   stateOrders.style.display  = '';
   let html = '';
-  // ── Section: Today's Orders ─────────────────────────────────────────────────
-  html += `<div class="section-header" onclick="toggleSection('pending')">
-    <span class="section-chevron" id="sec-chev-pending">▾</span>
+  const grand = state.orders.reduce((s,o) => s + o.total, 0);
+
+  // ── Non-collapsible date header ──────────────────────────────────────────────
+  html += `<div class="date-section-hdr">
     <span class="section-label">${toSectionLabel(picker.value)}</span>
-    <span class="section-count">${state.orders.length} orders · $${state.orders.reduce((s,o)=>s+o.total,0).toFixed(2)}</span>
+    <span class="section-count">${state.orders.length} order${state.orders.length !== 1 ? 's' : ''} · $${grand.toFixed(2)}</span>
     <div class="section-spacer"></div>
-    <div class="section-actions" onclick="event.stopPropagation()">
-      <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select all</button>
-      <button class="btn btn-sm btn-ghost" onclick="deselectAllSection('pending')">Deselect</button>
+    <div class="section-actions">
+      <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select pending</button>
+      <button class="btn btn-sm btn-ghost" onclick="selectAllDrafted()">Select drafts</button>
+      <button class="btn btn-sm btn-ghost" onclick="deselectAll()">Deselect all</button>
     </div>
   </div>`;
-  html += `<div class="section-body${isSectionCollapsed('pending') ? ' collapsed' : ''}" id="sec-body-pending">`;
+
+  // Sort by ascending stop number; nulls at bottom
+  const allSorted = [...state.orders].sort((a, b) => {
+    if (a.stopNum === null && b.stopNum === null) return 0;
+    if (a.stopNum === null) return 1;
+    if (b.stopNum === null) return -1;
+    return a.stopNum - b.stopNum;
+  });
+
+  const tableHeader = `<table class="orders-table" style="border-radius:0;box-shadow:none"><thead><tr>
+    <th style="width:32px"></th>
+    <th>Customer</th>
+    <th>Amount</th>
+    <th class="th-center">Stop #</th>
+    <th class="th-center">Invoice #</th>
+    <th class="th-center">Invoice Paid</th>
+    <th class="th-center">Order Fulfilled</th>
+    <th style="width:28px"></th>
+  </tr></thead><tbody>`;
+
+  const groups = [
+    { id: 'grp-sent',    label: 'Sent',    color: '#16a34a', statuses: ['sent'] },
+    { id: 'grp-drafted', label: 'Drafted', color: '#f97316', statuses: ['drafted'] },
+    { id: 'grp-pending', label: 'Pending', color: '#dc2626', statuses: ['pending','error','duplicate'] },
+  ];
+
   if (!state.orders.length) {
-    html += `<div style="padding:16px;text-align:center;color:#9ca3af;font-size:14px;background:#fff;border-radius:8px;border:1px dashed #e5e7eb">No orders for this date.</div>`;
+    html += `<div style="padding:20px;text-align:center;color:#9ca3af;font-size:14px;background:#fff;border-radius:10px;border:1px dashed #e5e7eb">No orders for this date.</div>`;
   } else {
-    html += `<table class="orders-table"><thead><tr>
-      <th style="width:32px"></th>
-      <th>Customer</th>
-      <th>Amount</th>
-      <th class="th-center">Stop #</th>
-      <th class="th-center">Invoice #</th>
-      <th class="th-center">Invoice Paid</th>
-      <th class="th-center">Order Fulfilled</th>
-      <th style="width:28px"></th>
-    </tr></thead><tbody>`;
-    // Sort all orders by ascending stop number; nulls go to the bottom
-    const allSorted = [...state.orders].sort((a, b) => {
-      if (a.stopNum === null && b.stopNum === null) return 0;
-      if (a.stopNum === null) return 1;
-      if (b.stopNum === null) return -1;
-      return a.stopNum - b.stopNum;
-    });
-    allSorted.forEach(o => { html += renderRow(o); });
-    html += `</tbody></table>`;
+    html += `<div class="orders-groups-card">`;
+    for (const [i, group] of groups.entries()) {
+      const grpOrders = allSorted.filter(o => group.statuses.includes(o.status));
+      const grpTotal  = grpOrders.reduce((s,o) => s + o.total, 0);
+      const collapsed = isSectionCollapsed(group.id);
+      const borderTop = i > 0 ? 'border-top:1px solid #e5e7eb;' : '';
+      html += `<div class="sub-section-hdr" style="${borderTop}" onclick="toggleSection('${group.id}')">
+        <span class="section-chevron${collapsed ? ' collapsed' : ''}" id="sec-chev-${group.id}">▾</span>
+        <span class="sub-section-label" style="color:${group.color}">${group.label}</span>
+        <span class="sub-section-count">${grpOrders.length} order${grpOrders.length !== 1 ? 's' : ''} · $${grpTotal.toFixed(2)}</span>
+      </div>
+      <div class="section-body${collapsed ? ' collapsed' : ''}" id="sec-body-${group.id}">`;
+      if (!grpOrders.length) {
+        html += `<div style="padding:10px 14px;font-size:13px;color:#9ca3af">No ${group.label.toLowerCase()} orders.</div>`;
+      } else {
+        html += tableHeader;
+        grpOrders.forEach(o => { html += renderRow(o); });
+        html += `</tbody></table>`;
+      }
+      html += `</div>`; // close section-body
+    }
+    html += `</div>`; // close orders-groups-card
   }
-  html += `</div>`; // close sec-body-pending
+
   // ── Section: Upcoming ───────────────────────────────────────────────────────
   if (getFeature('showNotInToday') && (state.notInToday.length || state.skipped.length)) {
     const upcomingCount = state.notInToday.length + state.skipped.length;
@@ -1043,10 +1080,10 @@ function renderOrders() {
       });
       html += `</div>`;
     }
+    html += `</div>`; // close sec-body-upcoming
   }
-  html += `</div>`; // close sec-body-upcoming
+
   stateOrders.innerHTML = html;
-  initSectionChevrons();
   toolbar.style.display = '';
   toolbar.dataset.loaded = '1';
   updateToolbar();
