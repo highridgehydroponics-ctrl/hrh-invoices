@@ -130,7 +130,7 @@
     .card-body { border-top: 1px solid #f3f4f6; }
     .card-body.closed { display: none; }
     .line-items { padding: 10px 14px; }
-    .line-item { display: grid; grid-template-columns: 1fr 68px 80px 72px; align-items: center; gap: 6px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f9fafb; }
+    .line-item { display: grid; grid-template-columns: 3fr 80px 100px 90px; align-items: center; gap: 12px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f9fafb; }
     .line-item:last-child { border-bottom: none; }
     .li-name  { color: #374151; font-weight: 500; }
     .li-qty, .li-price { border: 1px solid #e5e7eb; border-radius: 5px; padding: 3px 6px; font-size: 13px; width: 100%; text-align: right; background: #f9fafb; }
@@ -895,7 +895,6 @@ function renderRow(order) {
       </td>
       <td>${nameCell}</td>
       <td>${amountCell}</td>
-      <td class="tbl-center">${stopCell}</td>
       <td class="tbl-center">${invSentCell}</td>
       <td class="tbl-center">${invPaidCell}</td>
       <td class="tbl-center" style="font-size:12px;color:#6b7280">${fulfilledCell}</td>
@@ -903,7 +902,7 @@ function renderRow(order) {
     </tr>`;
   const detailRow = `
     <tr class="order-detail-row" id="body-${order.id}" style="${detailDisplay}">
-      <td colspan="8">
+      <td colspan="7">
         ${order.squareConflict ? `<div class="conflict-bar">⚠️ ${esc(order.squareConflict)}</div>` : ''}
         ${sardinWarning}
         ${isError     ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
@@ -916,10 +915,11 @@ function renderRow(order) {
           ${liRows}
         </div>
         <div class="card-footer">
-          <div style="display:flex;align-items:center;gap:8px">${invLink}${dupLink}${!isSent ? `<button id="dfeebtn-${order.id}" class="btn btn-sm btn-ghost" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();toggleDeliveryFee('${order.id}')">${hasDfee ? '✕ Remove fee' : '＋ Add $5 fee'}</button>` : ''}</div>
+          <div style="display:flex;align-items:center;gap:8px">${invLink}${dupLink}</div>
           <div class="card-footer-totals">
             <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
             <span id="dfee-${order.id}" style="${hasDfee ? '' : 'display:none'}">Delivery fee: <strong>$5.00</strong></span>
+            ${!isSent ? `<button id="dfeebtn-${order.id}" class="btn btn-sm btn-ghost" style="font-size:11px;padding:3px 8px;align-self:flex-end" onclick="event.stopPropagation();toggleDeliveryFee('${order.id}')">${hasDfee ? '✕ Remove fee' : '＋ Add $5 fee'}</button>` : ''}
             <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
           </div>
         </div>
@@ -1009,7 +1009,6 @@ function renderOrders() {
     <th style="width:32px"></th>
     <th>Customer</th>
     <th>Amount</th>
-    <th class="th-center">Stop #</th>
     <th class="th-center">Invoice #</th>
     <th class="th-center">Invoice Paid</th>
     <th class="th-center">Order Fulfilled</th>
