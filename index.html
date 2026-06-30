@@ -46,7 +46,7 @@
     .btn-month-end.active { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
     .btn-month-end:hover:not(:disabled) { background: #fef3c7; color: #92400e; }
     /* ── Toolbar ── */
-    .toolbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 10px 24px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 52px; }
+    .toolbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 52px; }
     .toolbar-stat { font-size: 13px; color: #6b7280; }
     .toolbar-stat strong { color: #111; }
     .toolbar-spacer { flex: 1; }
@@ -59,7 +59,7 @@
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
     .toolbar-sep { width: 1px; height: 20px; background: #e5e7eb; }
     /* ── Main ── */
-    .main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+    .main { padding: 20px 12px; }
     .state-box { text-align: center; padding: 60px 20px; color: #9ca3af; }
     .state-box p { font-size: 15px; }
     /* ── Section headers ── */
@@ -136,7 +136,8 @@
     .li-qty, .li-price { border: 1px solid #e5e7eb; border-radius: 5px; padding: 3px 6px; font-size: 13px; width: 100%; text-align: right; background: #f9fafb; }
     .li-qty:focus, .li-price:focus { outline: none; border-color: #1e3a5f; background: #fff; }
     .li-total { font-weight: 600; color: #111; text-align: right; }
-    .card-footer { padding: 8px 14px 10px; background: #fafafa; border-top: 1px solid #f3f4f6; display: flex; justify-content: flex-end; gap: 16px; font-size: 12px; color: #6b7280; flex-wrap: wrap; }
+    .card-footer { padding: 8px 14px 10px; background: #fafafa; border-top: 1px solid #f3f4f6; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; font-size: 12px; color: #6b7280; flex-wrap: wrap; }
+    .card-footer-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
     .card-footer strong { color: #111; }
     .card-expand-toggle { padding: 6px 14px; font-size: 12px; color: #6b7280; background: none; border: none; border-top: 1px solid #f3f4f6; cursor: pointer; width: 100%; text-align: left; }
     .card-expand-toggle:hover { background: #fafafa; color: #1e3a5f; }
@@ -811,7 +812,7 @@ function renderRow(order) {
   const conflictIcon = order.squareConflict
     ? ` <span title="${esc(order.squareConflict)}" style="color:#dc2626">⚠</span>` : '';
   const sqIdInCell = (getFeature('showSqId') && order.squareCustomerId)
-    ? `<div style="font-size:11px;color:#374151;font-family:monospace;margin-top:3px">${esc(order.squareCustomerId)}</div>`
+    ? `<div style="font-size:11px;color:#374151;margin-top:3px"><span style="font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.03em;font-size:10px">Square ID:</span> <span style="font-family:monospace">${esc(order.squareCustomerId)}</span></div>`
     : '';
   const sentToLine = order.customerEmail
     ? `<div class="tbl-email"><span style="font-size:10px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.03em">Sent to:</span> ${esc(order.customerEmail)}</div>`
@@ -908,11 +909,12 @@ function renderRow(order) {
           ${liRows}
         </div>
         <div class="card-footer">
-          ${invLink}${dupLink}
-          <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
-          <span id="dfee-${order.id}" style="${hasDfee ? '' : 'display:none'}">Delivery fee: <strong>$5.00</strong></span>
-          <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
-          ${!isSent ? `<button id="dfeebtn-${order.id}" class="btn btn-sm btn-ghost" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();toggleDeliveryFee('${order.id}')">${hasDfee ? '✕ Remove fee' : '＋ Add $5 fee'}</button>` : ''}
+          <div style="display:flex;align-items:center;gap:8px">${invLink}${dupLink}${!isSent ? `<button id="dfeebtn-${order.id}" class="btn btn-sm btn-ghost" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();toggleDeliveryFee('${order.id}')">${hasDfee ? '✕ Remove fee' : '＋ Add $5 fee'}</button>` : ''}</div>
+          <div class="card-footer-totals">
+            <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
+            <span id="dfee-${order.id}" style="${hasDfee ? '' : 'display:none'}">Delivery fee: <strong>$5.00</strong></span>
+            <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
+          </div>
         </div>
         ${wowHtml}
       </td>
