@@ -307,6 +307,7 @@
              onblur="applySardelliPO()">
       <span class="sardilli-preview" id="sardelliPOPreview">Enter PO number to include in invoice title</span>
     </div>
+    <button onclick="document.getElementById('sardelliPOBanner').style.display='none'" title="Dismiss" style="background:none;border:none;cursor:pointer;font-size:18px;color:#92400e;padding:0 4px;line-height:1;opacity:.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✕</button>
   </div>
 </div>
 <!-- ── Tab: Orders ── -->
@@ -580,10 +581,13 @@ function renderAddressBook() {
   if (!customers.length) { abEmpty.style.display = ''; abGrid.style.display = 'none'; return; }
   abEmpty.style.display = 'none';
   abGrid.style.display  = '';
-  abGrid.innerHTML = customers.map(c => `
+  abGrid.innerHTML = customers.map(c => {
+    const cKey = JSON.stringify(c.squareCustomerId || `name:${c.name}`);
+    return `
     <div class="ab-card">
       <div class="ab-card-header">
         <div class="ab-card-name">${esc(c.name)}</div>
+        <button onclick="clearCustomerHistory(${cKey})" title="Clear invoice history for this customer" style="background:none;border:none;cursor:pointer;font-size:13px;color:#9ca3af;padding:2px 4px;line-height:1" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">✕</button>
       </div>
       <div class="ab-card-body">
         ${c.email ? `<div class="ab-field"><span class="ab-label">Email</span><span style="font-size:13px;word-break:break-all">${esc(c.email)}</span></div>` : ''}
@@ -607,7 +611,15 @@ function renderAddressBook() {
         `).join('') : '<div style="font-size:12px;color:#9ca3af;padding:4px 0">No invoices recorded yet — they appear here after you run invoices from the dashboard.</div>'}
       </div>
     </div>
-  `).join('');
+  `; }).join('');
+}
+function clearCustomerHistory(key) {
+  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
+  if (!book[key]) return;
+  book[key].invoices = [];
+  localStorage.setItem('addressBook', JSON.stringify(book));
+  renderAddressBook();
+  showToast('Invoice history cleared — will rebuild on next load');
 }
 function clearAddressBook() {
   if (!confirm('Clear the entire address book? This cannot be undone.')) return;
@@ -927,7 +939,7 @@ function renderRow(order) {
           <div class="card-footer-totals">
             <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
             <span id="dfee-${order.id}" style="${hasDfee ? '' : 'display:none'}">Delivery fee: <strong>$5.00</strong></span>
-            ${!isSent ? `<button id="dfeebtn-${order.id}" class="btn btn-sm btn-ghost" style="font-size:11px;padding:3px 8px;align-self:flex-end" onclick="event.stopPropagation();toggleDeliveryFee('${order.id}')">${hasDfee ? '✕ Remove fee' : '＋ Add $5 fee'}</button>` : ''}
+            ${!isSent ? `<button id="dfeebtn-${order.id}" class="btn btn-sm ${hasDfee ? 'btn-ghost' : ''}" style="font-size:11px;padding:3px 8px;align-self:flex-end;${hasDfee ? '' : 'background:#16a34a;color:#fff;border-color:#16a34a'}" onclick="event.stopPropagation();toggleDeliveryFee('${order.id}')">${hasDfee ? '✕ Remove fee' : '＋ Add $5 fee'}</button>` : ''}
             <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
           </div>
         </div>
@@ -1267,7 +1279,7 @@ function showSardelliPOBanner() {
   const sardilli = state.orders.find(o => o.customerName.toLowerCase().includes('sardilli'));
   const banner = document.getElementById('sardelliPOBanner');
   if (!banner) return;
-  if (!sardilli || sardilli.status === 'sent') { banner.style.display = 'none'; return; }
+  if (!sardilli || sardilli.status === 'sent' || sardilli.status === 'drafted') { banner.style.display = 'none'; return; }
   banner.style.display = '';
   const saved = localStorage.getItem('sardilli-po-session') || '';
   const input = document.getElementById('sardelliPOInput');
@@ -1306,7 +1318,14 @@ function toggleDeliveryFee(orderId) {
   if (hdrEl)    hdrEl.textContent    = `$${order.total.toFixed(2)}`;
   if (totEl)    totEl.textContent    = `$${order.total.toFixed(2)}`;
   if (dfeeEl)   dfeeEl.style.display = order.deliveryFee > 0 ? '' : 'none';
-  if (dfeeBtnEl) dfeeBtnEl.textContent = order.deliveryFee > 0 ? '✕ Remove fee' : '＋ Add $5 fee';
+  if (dfeeBtnEl) {
+    const adding = order.deliveryFee <= 0;
+    dfeeBtnEl.textContent = adding ? '＋ Add $5 fee' : '✕ Remove fee';
+    dfeeBtnEl.style.background   = adding ? '#16a34a' : '';
+    dfeeBtnEl.style.color        = adding ? '#fff'    : '';
+    dfeeBtnEl.style.borderColor  = adding ? '#16a34a' : '';
+    dfeeBtnEl.classList.toggle('btn-ghost', !adding);
+  }
   updateToolbar();
 }
 // ── Init ─────────────────────────────────────────────────────────────────────────
