@@ -909,7 +909,7 @@ function renderRow(order) {
     <tr class="${rowClass}" id="row-${order.id}" onclick="toggleExpand('${order.id}')">
       <td onclick="event.stopPropagation()" style="width:32px;text-align:center">
         <input class="card-checkbox" type="checkbox" id="cb-${order.id}"
-               ${!order.squareConflict && isPending && !isCancelled ? 'checked' : ''}
+               ${!order.squareConflict && (isPending || isDrafted) && !isCancelled ? 'checked' : ''}
                ${isSent || isCancelled ? 'disabled' : ''}
                onclick="toggleCard('${order.id}')">
       </td>
