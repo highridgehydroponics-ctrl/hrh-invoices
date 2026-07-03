@@ -93,6 +93,7 @@
     .tbl-email.no-email { color: #dc2626; font-weight: 600; }
     .tbl-amount { font-size: 15px; font-weight: 800; color: #1e3a5f; white-space: nowrap; }
     .tbl-center { text-align: center; }
+    .tbl-right { text-align: right; }
     .tbl-inv-num a { color: #3b82f6; text-decoration: none; font-size: 12px; }
     .tbl-inv-num a:hover { text-decoration: underline; }
     .tbl-paid { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
@@ -202,6 +203,14 @@
     .ab-inv-row:last-child { border-bottom: none; }
     .ab-sq-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #1e3a5f; color: #fff; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
     .ab-sq-btn:hover { background: #162d4a; }
+    .ab-sqid-edit { font-family: monospace; font-size: 12px; padding: 3px 7px; border: 1.5px solid #d1d5db; border-radius: 5px; width: 100%; background: #fff; color: #111; }
+    .ab-sqid-edit:focus { outline: none; border-color: #1e3a5f; }
+    .ab-profile-row { display: flex; flex-direction: column; gap: 3px; padding: 8px 14px; border-top: 1px solid #f3f4f6; background: #f9fafb; }
+    .ab-profile-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; }
+    .ab-profile-val { font-size: 13px; color: #111; }
+    .ab-sync-btn { font-size: 11px; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 0; }
+    .ab-sync-btn:hover { text-decoration: underline; }
+    .ab-override-badge { font-size: 10px; font-weight: 700; color: #fff; background: #7c3aed; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
     .color-key { display: flex; align-items: center; gap: 14px; padding: 8px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
     .color-key-item { display: flex; align-items: center; gap: 6px; }
     .color-key-swatch { width: 12px; height: 12px; border-radius: 3px; border: 2px solid; flex-shrink: 0; }
@@ -254,9 +263,11 @@
     <a class="btn-sq-dash" href="https://app.squareup.com/dashboard/invoices?currentUnitToken=BYZ5P0549Z01F" target="_blank">
       ⬡ Square Dashboard
     </a>
-    <div class="date-row">
+    <div class="date-row" style="display:flex;align-items:center;gap:6px">
       <label for="datePicker">Fulfillment date</label>
+      <button onclick="shiftDate(-1)" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700" title="Previous day">◀</button>
       <input type="date" id="datePicker" />
+      <button onclick="shiftDate(1)" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700" title="Next day">▶</button>
     </div>
     <button class="btn btn-load" id="btnLoad">Load orders</button>
     <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
@@ -269,6 +280,7 @@
 <div class="tab-nav">
   <button class="tab-btn active" data-tab="orders">📋 Invoices</button>
   <button class="tab-btn" data-tab="addressbook">📒 Address Book</button>
+  <button class="tab-btn" data-tab="outstanding">💰 Outstanding</button>
   <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
   <button class="tab-btn" data-tab="notes">📝 Notes</button>
   <button class="tab-btn" data-tab="features">🔧 Features</button>
@@ -289,7 +301,7 @@
     <span id="runStatusText"></span>
   </div>
   <button class="btn btn-draft" id="btnDraft" style="display:none">Create drafts</button>
-  <button class="btn btn-send"  id="btnSend"  style="display:none">Send &amp; print</button>
+  <button class="btn btn-send"  id="btnSend"  style="display:none">Send Now</button>
 </div>
 <!-- ── Color key ── -->
 <div class="color-key">
@@ -334,6 +346,17 @@
     </div>
     <div id="abEmpty" class="ab-empty">No customers yet. Load orders to build your address book automatically.</div>
     <div id="abGrid" class="ab-grid" style="display:none"></div>
+  </div>
+</div>
+<!-- ── Tab: Outstanding ── -->
+<div id="tab-outstanding" style="display:none">
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="margin:0">💰 Outstanding Invoices</h2>
+      <button class="btn btn-sm btn-ghost" onclick="loadOutstanding()">↺ Refresh</button>
+    </div>
+    <div id="outstandingState" style="color:#9ca3af;font-size:14px;padding:20px 0">Click Refresh to load unpaid invoices.</div>
+    <div id="outstandingList" style="display:none"></div>
   </div>
 </div>
 <!-- ── Tab: Settings ── -->
@@ -531,7 +554,85 @@ document.getElementById('notesArea').addEventListener('input', () => {
   el.textContent = '';
   notesTimer = setTimeout(() => { el.textContent = '✓ Saved'; setTimeout(() => { el.textContent = ''; }, 1500); }, 600);
 });
+// ── Outstanding Invoices ────────────────────────────────────────────────────────
+async function loadOutstanding() {
+  const state$ = document.getElementById('outstandingState');
+  const list   = document.getElementById('outstandingList');
+  if (!state$ || !list) return;
+  state$.textContent = 'Loading…';
+  state$.style.display = '';
+  list.style.display = 'none';
+  try {
+    const res  = await fetch(`${WORKER_URL}/outstanding`);
+    const data = await res.json();
+    const invoices = data.invoices || [];
+    if (!invoices.length) { state$.textContent = 'No unpaid invoices — all clear! ✓'; return; }
+    state$.style.display = 'none';
+    // Group by customer name
+    const byCustomer = {};
+    for (const inv of invoices) {
+      const name = inv.primary_recipient?.customer_id || 'Unknown';
+      const displayName = inv.title?.replace(/\d{2}\/\d{2}\/\d{4}\s+/,'').replace(' Invoice','').trim() || inv.primary_recipient?.email_address || name;
+      const key = inv.primary_recipient?.customer_id || displayName;
+      if (!byCustomer[key]) byCustomer[key] = { name: displayName, invoices: [] };
+      byCustomer[key].invoices.push(inv);
+    }
+    // Calculate totals
+    const totalOwed = invoices.reduce((s, inv) => {
+      const amt = inv.payment_requests?.[0]?.computed_amount_money?.amount || 0;
+      return s + amt;
+    }, 0) / 100;
+    // Build table
+    let html = `<div style="margin-bottom:12px;font-size:14px;color:#374151"><strong>${invoices.length}</strong> unpaid invoice${invoices.length !== 1 ? 's' : ''} · Total outstanding: <strong style="color:#dc2626">$${totalOwed.toFixed(2)}</strong></div>`;
+    html += `<table class="orders-table"><thead><tr>
+      <th>Customer</th>
+      <th>Invoice Title</th>
+      <th class="th-center">Invoice #</th>
+      <th class="th-center">Due Date</th>
+      <th class="th-center">Status</th>
+      <th class="th-right">Amount</th>
+    </tr></thead><tbody>`;
+    for (const inv of invoices) {
+      const amt     = (inv.payment_requests?.[0]?.computed_amount_money?.amount || 0) / 100;
+      const due     = inv.payment_requests?.[0]?.due_date || '—';
+      const status  = inv.status || '—';
+      const isOverdue = due !== '—' && due < new Date().toISOString().slice(0,10);
+      const dueFmt  = due !== '—' ? (() => { const [y,m,d] = due.split('-'); return `${m}/${d}/${y}`; })() : '—';
+      const customerName = inv.title?.split(' Invoice')[0] || inv.primary_recipient?.email_address || '—';
+      html += `<tr style="${isOverdue ? 'background:#fff7f7' : ''}">
+        <td class="tbl-name">${esc(customerName)}</td>
+        <td style="font-size:13px;color:#374151">${esc(inv.title || '—')}</td>
+        <td class="tbl-center"><span class="tbl-inv-num">${inv.public_url ? `<a href="${esc(inv.public_url)}" target="_blank">${esc(inv.invoice_number || '—')}</a>` : esc(inv.invoice_number || '—')}</span></td>
+        <td class="tbl-center" style="font-size:13px;${isOverdue ? 'color:#dc2626;font-weight:700' : 'color:#6b7280'}">${esc(dueFmt)}${isOverdue ? ' ⚠' : ''}</td>
+        <td class="tbl-center"><span class="badge ${status === 'PARTIALLY_PAID' ? 'badge-bring' : ''}" style="${status === 'UNPAID' ? 'background:#fee2e2;color:#991b1b' : ''}">${esc(status)}</span></td>
+        <td class="tbl-right" style="font-weight:700;color:#111">$${amt.toFixed(2)}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    list.innerHTML = html;
+    list.style.display = '';
+  } catch (e) {
+    state$.textContent = 'Failed to load: ' + e.message;
+  }
+}
 // ── Address Book ────────────────────────────────────────────────────────────────
+// Apply address-book Square ID overrides to orders before processing.
+// If a user has set a squareCustomerIdOverride for a customer in the address book,
+// that ID replaces the one from AppSheet for all invoice operations this session.
+function applySquareIdOverrides(orders) {
+  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
+  const entries = Object.values(book).filter(e => e.squareCustomerIdOverride);
+  if (!entries.length) return;
+  for (const order of orders) {
+    const match = entries.find(e =>
+      (e.name || '').toLowerCase().trim() === (order.customerName || '').toLowerCase().trim()
+    );
+    if (match) {
+      order.squareCustomerId = match.squareCustomerIdOverride;
+      order.squareConflict   = null; // clear any "no Square ID" warning
+    }
+  }
+}
 function updateAddressBook(orders) {
   const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
   for (const o of orders) {
@@ -572,7 +673,9 @@ function renderAddressBook() {
   const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
   const query = (document.getElementById('abSearch')?.value || '').toLowerCase();
   let customers = Object.values(book).filter(c =>
-    c.name.toLowerCase().includes(query) || (c.email || '').toLowerCase().includes(query)
+    (c.name || '').toLowerCase().includes(query) ||
+    (c.email || '').toLowerCase().includes(query) ||
+    (c.squareProfile?.company || '').toLowerCase().includes(query)
   );
   customers.sort((a, b) => (a.stopNum ?? 999) - (b.stopNum ?? 999));
   const abEmpty = document.getElementById('abEmpty');
@@ -581,23 +684,63 @@ function renderAddressBook() {
   if (!customers.length) { abEmpty.style.display = ''; abGrid.style.display = 'none'; return; }
   abEmpty.style.display = 'none';
   abGrid.style.display  = '';
+
   abGrid.innerHTML = customers.map(c => {
-    const cKey = JSON.stringify(c.squareCustomerId || `name:${c.name}`);
+    const bookKey     = c.squareCustomerId || `name:${c.name}`;
+    const cKeyJson    = JSON.stringify(bookKey);
+    const effectiveSqId = c.squareCustomerIdOverride || c.squareCustomerId || '';
+    const hasOverride   = !!c.squareCustomerIdOverride && c.squareCustomerIdOverride !== c.squareCustomerId;
+    const sq = c.squareProfile || {};
+    const syncedAt = sq.fetchedAt ? `Synced ${new Date(sq.fetchedAt).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}` : 'Not synced';
+
+    // Square profile block (shown when synced)
+    const squareName = ((sq.given_name || '') + ' ' + (sq.family_name || '')).trim();
+    const addrParts = sq.address ? [sq.address.address_line_1, sq.address.address_line_2, sq.address.city, sq.address.state, sq.address.postal_code].filter(Boolean) : [];
+    const profileHtml = sq.fetchedAt ? `
+      <div class="ab-profile-row">
+        <span class="ab-profile-label">Name on file</span>
+        <span class="ab-profile-val">${esc(squareName || '—')}</span>
+      </div>
+      ${sq.email_address ? `<div class="ab-profile-row"><span class="ab-profile-label">Email</span><span class="ab-profile-val" style="word-break:break-all">${esc(sq.email_address)}</span></div>` : ''}
+      ${sq.phone_number ? `<div class="ab-profile-row"><span class="ab-profile-label">Phone</span><span class="ab-profile-val">${esc(sq.phone_number)}</span></div>` : ''}
+      ${addrParts.length ? `<div class="ab-profile-row"><span class="ab-profile-label">Address</span><span class="ab-profile-val">${esc(addrParts.join(', '))}</span></div>` : ''}
+      <div class="ab-profile-row">
+        <span class="ab-profile-label">Card on file</span>
+        <span class="ab-profile-val" style="${sq.has_card_on_file ? 'color:#16a34a;font-weight:600' : 'color:#dc2626'}">${sq.has_card_on_file ? 'Yes' : 'No'}</span>
+      </div>
+    ` : '';
+
     return `
     <div class="ab-card">
       <div class="ab-card-header">
-        <div class="ab-card-name">${esc(c.name)}</div>
-        <button onclick="clearCustomerHistory(${cKey})" title="Clear invoice history for this customer" style="background:none;border:none;cursor:pointer;font-size:13px;color:#9ca3af;padding:2px 4px;line-height:1" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">✕</button>
+        <div>
+          <div class="ab-card-name">${esc(c.name)}</div>
+          ${sq.company_name && sq.company_name !== c.name ? `<div style="font-size:11px;color:#6b7280;margin-top:1px">${esc(sq.company_name)}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="syncSquareProfile(${cKeyJson})" class="ab-sync-btn" title="${syncedAt}">↺ Sync</button>
+          <button onclick="clearCustomerHistory(${cKeyJson})" title="Clear invoice history" style="background:none;border:none;cursor:pointer;font-size:13px;color:#9ca3af;padding:2px 4px;line-height:1" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">✕</button>
+        </div>
       </div>
+      ${profileHtml}
       <div class="ab-card-body">
-        ${c.email ? `<div class="ab-field"><span class="ab-label">Email</span><span style="font-size:13px;word-break:break-all">${esc(c.email)}</span></div>` : ''}
-        ${c.squareCustomerId ? `
-          <div class="ab-field">
-            <span class="ab-label">Square ID</span>
-            <code class="ab-sqid">${esc(c.squareCustomerId)}</code>
-            <button class="ab-copy" onclick="copyText('${esc(c.squareCustomerId)}')">Copy</button>
-          </div>` : ''}
+        <div class="ab-field" style="flex-direction:column;align-items:flex-start;gap:4px">
+          <span class="ab-label">Square ID${hasOverride ? '<span class="ab-override-badge">OVERRIDE</span>' : ''}</span>
+          <div style="display:flex;gap:6px;width:100%;align-items:center" id="ab-sqid-view-${esc(bookKey)}">
+            <code class="ab-sqid" style="flex:1">${esc(effectiveSqId || '—')}</code>
+            <button class="ab-copy" onclick="copyText('${esc(effectiveSqId)}')">Copy</button>
+            <button class="ab-copy" onclick="startEditSquareId(${cKeyJson})">Edit</button>
+          </div>
+          <div style="display:none;gap:6px;width:100%;align-items:center" id="ab-sqid-edit-${esc(bookKey)}">
+            <input class="ab-sqid-edit" id="ab-sqid-input-${esc(bookKey)}" value="${esc(effectiveSqId)}" placeholder="Square Customer ID" />
+            <button class="ab-copy" style="color:#16a34a;font-weight:700" onclick="saveSquareIdOverride(${cKeyJson})">Save</button>
+            <button class="ab-copy" onclick="cancelEditSquareId(${cKeyJson})">Cancel</button>
+          </div>
+          ${hasOverride ? `<div style="font-size:10px;color:#7c3aed">Overrides AppSheet (original: ${esc(c.squareCustomerId || '—')})</div>` : ''}
+        </div>
+        ${!sq.fetchedAt && c.email ? `<div class="ab-field"><span class="ab-label">Email</span><span style="font-size:13px;word-break:break-all">${esc(c.email)}</span></div>` : ''}
         <div class="ab-field"><span class="ab-label">Bring invoice</span><span style="font-size:13px">${c.bringInvoice ? '📄 Yes — bring printed invoice' : 'No'}</span></div>
+        <div style="font-size:10px;color:#9ca3af;margin-top:2px">${esc(syncedAt)}</div>
       </div>
       <div class="ab-invoices">
         <div class="ab-inv-label">Invoice history${c.invoices?.length ? ` (${c.invoices.length})` : ''}</div>
@@ -612,6 +755,60 @@ function renderAddressBook() {
       </div>
     </div>
   `; }).join('');
+}
+function startEditSquareId(key) {
+  document.getElementById(`ab-sqid-view-${key}`)?.style && (document.getElementById(`ab-sqid-view-${key}`).style.display = 'none');
+  const edit = document.getElementById(`ab-sqid-edit-${key}`);
+  if (edit) { edit.style.display = 'flex'; edit.querySelector('input')?.focus(); }
+}
+function cancelEditSquareId(key) {
+  document.getElementById(`ab-sqid-view-${key}`)?.style && (document.getElementById(`ab-sqid-view-${key}`).style.display = 'flex');
+  const edit = document.getElementById(`ab-sqid-edit-${key}`);
+  if (edit) edit.style.display = 'none';
+}
+function saveSquareIdOverride(key) {
+  const input = document.getElementById(`ab-sqid-input-${key}`);
+  if (!input) return;
+  const newId = input.value.trim();
+  const book  = JSON.parse(localStorage.getItem('addressBook') || '{}');
+  if (!book[key]) return;
+  book[key].squareCustomerIdOverride = newId || null;
+  // Clear cached Square profile so it gets re-fetched with the new ID
+  if (newId !== (book[key].squareCustomerId || '')) book[key].squareProfile = null;
+  localStorage.setItem('addressBook', JSON.stringify(book));
+  renderAddressBook();
+  showToast(newId ? `Square ID override saved — will be used for all future invoices` : 'Override cleared', 'green');
+}
+async function syncSquareProfile(key) {
+  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
+  if (!book[key]) return;
+  const sqId = book[key].squareCustomerIdOverride || book[key].squareCustomerId;
+  if (!sqId) { showToast('No Square ID to sync — set one first', 'red'); return; }
+  showToast('Syncing from Square…', '');
+  try {
+    const res  = await fetch(`${WORKER_URL}/square-customer?id=${encodeURIComponent(sqId)}`);
+    const data = await res.json();
+    if (!data.customer) { showToast('Square customer not found', 'red'); return; }
+    const c = data.customer;
+    book[key].squareProfile = {
+      given_name:    c.given_name    || '',
+      family_name:   c.family_name   || '',
+      company_name:  c.company_name  || '',
+      email_address: c.email_address || '',
+      phone_number:  c.phone_number  || '',
+      address:       c.address       || null,
+      reference_id:  c.reference_id  || '',
+      has_card_on_file: data.has_card_on_file ?? false,
+      fetchedAt:     new Date().toISOString(),
+    };
+    // Also update email from Square if present
+    if (c.email_address) book[key].email = c.email_address;
+    localStorage.setItem('addressBook', JSON.stringify(book));
+    renderAddressBook();
+    showToast('Square profile synced ✓', 'green');
+  } catch (e) {
+    showToast('Sync failed: ' + e.message, 'red');
+  }
 }
 function clearCustomerHistory(key) {
   const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
@@ -648,16 +845,24 @@ function toSectionLabel(iso) {
   const dow = days[new Date(y, m-1, d).getDay()];
   return `${dow} ${m}/${d}/${y} Orders`;
 }
+function shiftDate(days) {
+  const [y,m,d] = picker.value.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  dt.setDate(dt.getDate() + days);
+  picker.value = toInputFmt(dt);
+  document.getElementById('btnLoad').click();
+}
 const picker = document.getElementById('datePicker');
 picker.value = toInputFmt(getDefaultDate());
 // ── Tab switching ───────────────────────────────────────────────────────────────
-const TABS = ['orders','addressbook','settings','notes','features','rules'];
+const TABS = ['orders','addressbook','outstanding','settings','notes','features','rules'];
 function switchTab(name) {
   TABS.forEach(t => { document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none'; });
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
   const toolbar = document.getElementById('toolbar');
   if (toolbar.dataset.loaded === '1') toolbar.style.display = name === 'orders' ? '' : 'none';
   if (name === 'addressbook') renderAddressBook();
+  if (name === 'outstanding') loadOutstanding();
 }
 document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 document.getElementById('btnRefresh').addEventListener('click', () => document.getElementById('btnLoad').click());
@@ -837,7 +1042,7 @@ function renderRow(order) {
     ? `<div class="tbl-email"><span style="font-size:10px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.03em">Sent to:</span> ${esc(order.customerEmail)}</div>`
     : `<div class="tbl-email no-email">⚠ No email on file</div>`;
   const pickupBadge = isPickup ? ` <span style="font-size:10px;font-weight:700;color:#7c3aed;background:#ede9fe;padding:1px 5px;border-radius:4px;vertical-align:middle">PICKUP</span>` : '';
-  const isCancelled = (order.appsheetStatus || '').toLowerCase() === 'customer cancelled order';
+  const isCancelled = (order.appsheetStatus || '').toLowerCase().includes('cancel');
   const statusBadge = order.appsheetStatus
     ? (() => {
         const s = order.appsheetStatus;
@@ -854,8 +1059,12 @@ function renderRow(order) {
   // Invoice # cell
   let invSentCell;
   if ((isDrafted || isSent) && order.squareInvoiceNumber) {
-    const link = order.squareInvoiceUrl
-      ? `<a href="${esc(order.squareInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">${esc(order.squareInvoiceNumber)}</a>`
+    // Use Square dashboard URL for edit access; fall back to public URL
+    const dashUrl = order.squareInvoiceId
+      ? `https://squareup.com/dashboard/invoices/${order.squareInvoiceId}${isDrafted ? '/edit' : ''}`
+      : (order.squareInvoiceUrl || null);
+    const link = dashUrl
+      ? `<a href="${esc(dashUrl)}" target="_blank" onclick="event.stopPropagation()" title="${isDrafted ? 'Edit draft in Square dashboard' : 'View invoice in Square dashboard'}">${esc(order.squareInvoiceNumber)}</a>`
       : esc(order.squareInvoiceNumber);
     invSentCell = `<span class="tbl-inv-num">${link}</span>`;
   } else if (isDrafted) {
@@ -895,7 +1104,7 @@ function renderRow(order) {
   }).join('');
   const hasDfee   = order.deliveryFee > 0;
   const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
-    ? `<a class="inv-link" href="${esc(order.squareInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">↗ View in Square</a>` : '';
+    ? `<a class="inv-link" href="${esc(order.squareInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()" title="${isSent ? 'Open in Square to resend, mark paid, or manage' : 'View draft in Square'}">${isSent ? '↗ Manage in Square' : '↗ View in Square'}</a>` : '';
   const dupLink = isDuplicate && order.existingInvoiceUrl
     ? `<a class="inv-link" href="${esc(order.existingInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">↗ View existing</a>` : '';
   const sardilli = getSardelliPO(order);
@@ -925,7 +1134,10 @@ function renderRow(order) {
       <td colspan="7">
         ${order.squareConflict ? `<div class="conflict-bar">⚠️ ${esc(order.squareConflict)}</div>` : ''}
         ${sardinWarning}
-        ${isError     ? `<div class="card-error">⛔ ${esc(order.error || 'Unknown error')}</div>` : ''}
+        ${isError ? `<div class="card-error" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+  <span>⛔ ${esc(order.error || 'Unknown error')}</span>
+  <button class="btn btn-sm btn-ghost" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="event.stopPropagation();retryOrder('${order.id}')">↺ Retry</button>
+</div>` : ''}
         ${isDuplicate ? `<div class="conflict-bar">⚠ ${esc(order.error || '')} ${dupLink}</div>` : ''}
         <div class="line-items" style="padding:10px 16px">
           ${invTitleLine ? `<div style="font-size:12px;color:#374151;padding:4px 0 6px">${invTitleLine}</div>` : ''}
@@ -935,7 +1147,13 @@ function renderRow(order) {
           ${liRows}
         </div>
         <div class="card-footer">
-          <div style="display:flex;align-items:center;gap:8px">${invLink}${dupLink}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${invLink}${dupLink}
+            ${isSent && order.sentAt ? (() => {
+              const d = new Date(order.sentAt);
+              return `<span style="font-size:11px;color:#6b7280">Sent ${d.toLocaleDateString([],{month:'short',day:'numeric'})} at ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`;
+            })() : ''}
+          </div>
           <div class="card-footer-totals">
             <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
             <span id="dfee-${order.id}" style="${hasDfee ? '' : 'display:none'}">Delivery fee: <strong>$5.00</strong></span>
@@ -1035,6 +1253,8 @@ function renderOrders() {
     <th style="width:28px"></th>
   </tr></thead><tbody>`;
 
+  const isCancelledOrder = o => (o.appsheetStatus || '').toLowerCase().includes('cancel');
+
   const groups = [
     { id: 'grp-sent',    label: 'Sent',    color: '#16a34a', statuses: ['sent'] },
     { id: 'grp-drafted', label: 'Drafted', color: '#f97316', statuses: ['drafted'] },
@@ -1046,7 +1266,8 @@ function renderOrders() {
   } else {
     html += `<div class="orders-groups-card">`;
     for (const [i, group] of groups.entries()) {
-      const grpOrders = allSorted.filter(o => group.statuses.includes(o.status));
+      // Cancelled orders are shown in their own section at the bottom — exclude from Pending
+      const grpOrders = allSorted.filter(o => group.statuses.includes(o.status) && !isCancelledOrder(o));
       const grpTotal  = grpOrders.reduce((s,o) => s + o.total, 0);
       const collapsed = isSectionCollapsed(group.id);
       const borderTop = i > 0 ? 'border-top:1px solid #e5e7eb;' : '';
@@ -1102,6 +1323,27 @@ function renderOrders() {
     html += `</div>`; // close sec-body-upcoming
   }
 
+  // ── Section: Cancelled ──────────────────────────────────────────────────────
+  const cancelledOrders = allSorted.filter(isCancelledOrder);
+  if (cancelledOrders.length) {
+    html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('cancelled')">
+      <span class="section-chevron${isSectionCollapsed('cancelled') ? ' collapsed' : ''}" id="sec-chev-cancelled">▾</span>
+      <span class="section-label" style="color:#9ca3af">Cancelled</span>
+      <span class="section-count">${cancelledOrders.length} order${cancelledOrders.length !== 1 ? 's' : ''}</span>
+    </div>
+    <div class="section-body${isSectionCollapsed('cancelled') ? ' collapsed' : ''}" id="sec-body-cancelled">
+      <div class="mini-list">`;
+    cancelledOrders.forEach(o => {
+      const items = o.lineItems.map(li => `${li.qty}× ${esc(li.name)}`).join(', ');
+      html += `<div class="mini-card">
+        <div class="mini-card-name">${esc(o.customerName)} <span style="color:#dc2626;font-size:12px;font-weight:400">— customer cancelled</span></div>
+        <div class="mini-card-detail">$${o.total.toFixed(2)}</div>
+        ${items ? `<div class="mini-card-items">${items}</div>` : ''}
+      </div>`;
+    });
+    html += `</div></div>`; // close mini-list + sec-body-cancelled
+  }
+
   stateOrders.innerHTML = html;
   toolbar.style.display = '';
   toolbar.dataset.loaded = '1';
@@ -1135,6 +1377,7 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
     state.orders     = data.orders     || [];
     state.notInToday = data.notInToday || [];
     state.skipped    = data.skipped    || [];
+    applySquareIdOverrides(state.orders);
     updateAddressBook(state.orders);
     renderOrders();
     showSardelliPOBanner();
@@ -1143,7 +1386,7 @@ document.getElementById('btnLoad').addEventListener('click', async () => {
     const _now = new Date();
     const _ts  = document.getElementById('lastRefreshTime');
     _ts.style.display  = '';
-    _ts.textContent    = `Updated ${_now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}`;
+    _ts.textContent    = `Updated ${_now.toLocaleDateString([], {month:'short', day:'numeric'})} at ${_now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     showToast(`Loaded ${state.orders.length} orders for ${date}${monthEndMode ? ' (month-end mode)' : ''}`, 'green');
     runSquareCheck();
   } catch (e) {
@@ -1252,9 +1495,12 @@ document.getElementById('btnConfirmSend').addEventListener('click', async () => 
     if (sentOrders.length) updateAddressBookWithInvoices(sentOrders);
     setStatus(errOrders.length === 0 ? 'All invoices sent ✓' : '', 'green');
     updateToolbar();
+    const sentNow = new Date();
+    const sentTimeStr = sentNow.toLocaleDateString([], {month:'short', day:'numeric'}) + ' at ' + sentNow.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     document.getElementById('completeSummaryText').innerHTML =
       `<strong>${sentOrders.length}</strong> invoice${sentOrders.length !== 1 ? 's' : ''} sent · Total: <strong>$${totalSent.toFixed(2)}</strong>` +
-      (errOrders.length ? ` · <span style="color:#dc2626">${errOrders.length} error${errOrders.length !== 1 ? 's' : ''}</span>` : '');
+      (errOrders.length ? ` · <span style="color:#dc2626">${errOrders.length} error${errOrders.length !== 1 ? 's' : ''}</span>` : '') +
+      `<br><span style="font-size:12px;color:#6b7280">Sent ${sentTimeStr}</span>`;
     document.getElementById('completeList').innerHTML =
       sentOrders.map(o => `<div class="complete-row">
         <span>✓ ${esc(o.customerName)}</span>
@@ -1281,7 +1527,7 @@ function showSardelliPOBanner() {
   if (!banner) return;
   if (!sardilli || sardilli.status === 'sent' || sardilli.status === 'drafted') { banner.style.display = 'none'; return; }
   banner.style.display = '';
-  const saved = localStorage.getItem('sardilli-po-session') || '';
+  const saved = localStorage.getItem('sardilli-po-persistent') || localStorage.getItem('sardilli-po-session') || '';
   const input = document.getElementById('sardelliPOInput');
   if (input && saved) { input.value = saved; applySardelliPO(); }
   else updateSardelliPreview(sardilli, saved);
@@ -1297,12 +1543,26 @@ function updateSardelliPreview(order, poNum) {
 function applySardelliPO() {
   const poNum = (document.getElementById('sardelliPOInput')?.value || '').trim();
   localStorage.setItem('sardilli-po-session', poNum);
+  localStorage.setItem('sardilli-po-persistent', poNum);
   const sardilli = state.orders.find(o => o.customerName.toLowerCase().includes('sardilli'));
   if (!sardilli) return;
   const baseDate = (sardilli.invoiceTitle || '').split(' - PO')[0].split(' Invoice')[0];
   sardilli.invoiceTitle = poNum ? `${baseDate} Invoice - PO #${poNum}` : `${baseDate} Invoice`;
   updateSardelliPreview(sardilli, poNum);
   patchCard(sardilli);
+}
+// ── Retry error order ───────────────────────────────────────────────────────────
+async function retryOrder(orderId) {
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order || order.status !== 'error') return;
+  order.status = 'pending';
+  order.error  = null;
+  renderOrders();
+  initSectionChevrons();
+  // Auto-select just this order
+  setChecked(orderId, true);
+  updateToolbar();
+  showToast(`${order.customerName} reset to pending — select and draft when ready`, '');
 }
 // ── Delivery fee toggle ──────────────────────────────────────────────────────────
 function toggleDeliveryFee(orderId) {
