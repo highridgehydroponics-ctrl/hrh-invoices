@@ -1,1601 +1,645 @@
+/**
+ * HRH Invoice Worker
+ * Cloudflare Worker backend for the HRH invoice dashboard.
+ *
+ * Environment variables (set in Cloudflare dashboard → Worker → Settings → Variables):
+ *   APPSHEET_APP_ID      = bea55701-8006-4581-a791-19a75092943f
+ *   APPSHEET_API_KEY     = V2-f4zl4-pDmwB-IZ9zh-t6ari-vPhJu-FmAwJ-WQ46U-LIUqO
+ *   SQUARE_ACCESS_TOKEN  = <your Square Production Access Token from developer.squareup.com>
+ *   SQUARE_LOCATION_ID   = BYZ5P0549Z01F
+ *
+ * Endpoints:
+ *   GET  /orders?date=MM/DD/YYYY[&includeMonthEnd=1]
+ *   POST /create-drafts   (includes duplicate pre-check)
+ *   POST /send-invoices
+ *   POST /square-check
+ */
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Invoice Generator</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7f5; color: #1a1a1a; min-height: 100vh; }
-    /* ── Header ── */
-    .header { background: #1e3a5f; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
-    .header-title { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
-    .header-sub   { font-size: 13px; opacity: .75; margin-top: 2px; }
-    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .date-row { display: flex; align-items: center; gap: 8px; }
-    .date-row label { font-size: 13px; color: #fff; opacity: .85; white-space: nowrap; }
-    .date-row input[type="date"] { padding: 10px 14px; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; background: rgba(255,255,255,.18); color: #fff; cursor: pointer; }
-    .date-row input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
-    .btn-sq-dash { background: rgba(255,255,255,.15); color: #fff; border: 1.5px solid rgba(255,255,255,.4); padding: 8px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: background .15s; }
-    .btn-sq-dash:hover { background: rgba(255,255,255,.25); }
-    /* ── Tab nav ── */
-    .tab-nav { background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; gap: 0; overflow-x: auto; }
-    .tab-btn { padding: 12px 18px; font-size: 13px; font-weight: 600; color: #6b7280; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; transition: color .15s, border-color .15s; }
-    .tab-btn:hover  { color: #1e3a5f; }
-    .tab-btn.active { color: #1e3a5f; border-bottom-color: #1e3a5f; }
-    /* ── Buttons ── */
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; white-space: nowrap; }
-    .btn:active { transform: scale(.97); }
-    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-    .btn-load    { background: #e07020; color: #fff; }
-    .btn-load:hover:not(:disabled)    { background: #c45e10; }
-    .btn-draft   { background: #1e3a5f; color: #fff; }
-    .btn-draft:hover:not(:disabled)   { background: #162d4a; }
-    .btn-send    { background: #d97706; color: #fff; }
-    .btn-send:hover:not(:disabled)    { background: #b45309; }
-    .btn-cancel  { background: #fff; color: #666; border: 1.5px solid #d1d5db; }
-    .btn-cancel:hover:not(:disabled)  { background: #f9fafb; }
-    .btn-confirm      { background: #dc2626; color: #fff; }
-    .btn-confirm-send { background: #d97706; color: #fff; }
-    .btn-save  { background: #1e3a5f; color: #fff; }
-    .btn-save:hover:not(:disabled) { background: #162d4a; }
-    .btn-sm    { padding: 5px 10px; font-size: 12px; border-radius: 5px; }
-    .btn-ghost { background: #f3f4f6; color: #374151; }
-    .btn-ghost:hover:not(:disabled) { background: #e5e7eb; }
-    .btn-month-end { background: #f3f4f6; color: #374151; border: 1.5px solid #d1d5db; }
-    .btn-month-end.active { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-    .btn-month-end:hover:not(:disabled) { background: #fef3c7; color: #92400e; }
-    /* ── Toolbar ── */
-    .toolbar { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 52px; }
-    .toolbar-stat { font-size: 13px; color: #6b7280; }
-    .toolbar-stat strong { color: #111; }
-    .toolbar-spacer { flex: 1; }
-    .run-status { display: none; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-    .run-status.visible { display: flex; }
-    .run-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 1.2s infinite; }
-    .run-dot.blue   { background: #3b82f6; }
-    .run-dot.orange { background: #d97706; }
-    .run-dot.green  { background: #16a34a; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-    .toolbar-sep { width: 1px; height: 20px; background: #e5e7eb; }
-    /* ── Main ── */
-    .main { padding: 20px 12px; }
-    .state-box { text-align: center; padding: 60px 20px; color: #9ca3af; }
-    .state-box p { font-size: 15px; }
-    /* ── Section headers ── */
-    .section-header { display: flex; align-items: center; gap: 10px; margin: 24px 0 10px; cursor: pointer; user-select: none; }
-    .section-header:hover .section-label { color: #162d4a; }
-    .section-chevron { font-size: 15px; color: #1e3a5f; transition: transform .2s; flex-shrink: 0; font-weight: 700; }
-    .section-chevron.collapsed { transform: rotate(-90deg); }
-    .section-body.collapsed { display: none; }
-    .section-label { font-size: 17px; font-weight: 800; letter-spacing: .01em; text-transform: uppercase; color: #1e3a5f; }
-    .section-count { font-size: 13px; font-weight: 600; color: #6b7280; }
-    .section-spacer { flex: 1; }
-    .section-actions { display: flex; gap: 6px; }
-    /* ── Orders Table ── */
-    .orders-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 4px; }
-    /* Column headers: dark black */
-    .orders-table thead th { padding: 9px 12px; font-size: 11px; font-weight: 700; color: #111; text-transform: uppercase; letter-spacing: .05em; text-align: left; border-bottom: 2px solid #f3f4f6; background: #fafafa; white-space: nowrap; }
-    .orders-table thead th.th-center { text-align: center; }
-    .order-row { cursor: pointer; border-left: 3px solid #fca5a5; transition: background .1s; }
-    .order-row:hover { background: #fff0f0; }
-    .order-row.status-drafted  { border-left-color: #fb923c; background: #fff8f3; }
-    .order-row.status-drafted:hover { background: #fff0e6; }
-    .order-row.status-sent     { border-left-color: #4ade80; background: #f0fdf4; }
-    .order-row.status-sent:hover { background: #e6faf0; }
-    .order-row.status-error    { border-left-color: #dc2626; }
-    .order-row.status-duplicate{ border-left-color: #fbbf24; background: #fffbeb; }
-    .order-row td { padding: 10px 12px; vertical-align: middle; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #374151; }
-    .order-detail-row td { padding: 0; border-bottom: 2px solid #e5e7eb; background: #fafafa; }
-    .tbl-name { font-size: 14px; font-weight: 700; color: #111; }
-    /* Email: dark black */
-    .tbl-email { font-size: 11px; color: #111; margin-top: 2px; }
-    .tbl-email.no-email { color: #dc2626; font-weight: 600; }
-    .tbl-amount { font-size: 15px; font-weight: 800; color: #1e3a5f; white-space: nowrap; }
-    .tbl-center { text-align: center; }
-    .tbl-right { text-align: right; }
-    .tbl-inv-num a { color: #3b82f6; text-decoration: none; font-size: 12px; }
-    .tbl-inv-num a:hover { text-decoration: underline; }
-    .tbl-paid { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-    .tbl-paid.paid    { background: #d1fae5; color: #065f46; }
-    .tbl-paid.partial { background: #fef3c7; color: #92400e; }
-    .tbl-paid.unpaid  { background: #f3f4f6; color: #6b7280; }
-    .tbl-expand-btn { font-size: 12px; color: #9ca3af; text-align: center; user-select: none; width: 28px; }
-    .card-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: #1e3a5f; }
-    .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
-    .badge-bring { background: #fef9c3; color: #854d0e; }
-    /* Conflict / error bars */
-    .conflict-bar { background: #fffbeb; border-top: 1px solid #fde68a; padding: 8px 14px; font-size: 12px; color: #92400e; }
-    .card-error   { background: #fef2f2; border-top: 1px solid #fca5a5; padding: 8px 14px; font-size: 12px; color: #991b1b; }
-    /* WoW diff section */
-    .wow-section { border-top: 1px solid #f3f4f6; }
-    /* "vs last week" toggle: bright blue */
-    .wow-toggle  { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 14px; font-size: 12px; color: #2563eb; background: none; border: none; cursor: pointer; text-align: left; font-weight: 600; }
-    .wow-toggle:hover { background: #f9fafb; color: #1e3a5f; }
-    .wow-body.closed { display: none; }
-    .wow-body { padding: 0 14px 10px; }
-    .wow-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .wow-table th { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; padding: 3px 4px; border-bottom: 1px solid #f3f4f6; text-align: right; }
-    .wow-table th:first-child { text-align: left; }
-    .wow-table td { padding: 4px 4px; border-bottom: 1px solid #f9fafb; color: #374151; text-align: right; }
-    .wow-table td:first-child { text-align: left; }
-    .wow-table tr:last-child td { border-bottom: none; }
-    .wow-new     .wow-name { color: #1d4ed8; font-weight: 600; }
-    .wow-dropped .wow-name { color: #9ca3af; text-decoration: line-through; }
-    .wow-changed .wow-name { color: #a16207; font-weight: 600; }
-    .wow-same    .wow-name { color: #6b7280; }
-    .wow-delta { font-size: 11px; color: #6b7280; padding: 4px 14px 0; }
-    .wow-delta.pos { color: #16a34a; }
-    .wow-delta.neg { color: #dc2626; }
-    /* Line items */
-    .card-body { border-top: 1px solid #f3f4f6; }
-    .card-body.closed { display: none; }
-    .line-items { padding: 10px 14px; }
-    .line-item { display: grid; grid-template-columns: 3fr 80px 100px 90px; align-items: center; gap: 12px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f9fafb; }
-    .line-item:last-child { border-bottom: none; }
-    .li-name  { color: #374151; font-weight: 500; }
-    .li-qty, .li-price { border: 1px solid #e5e7eb; border-radius: 5px; padding: 3px 6px; font-size: 13px; width: 100%; text-align: right; background: #f9fafb; }
-    .li-qty:focus, .li-price:focus { outline: none; border-color: #1e3a5f; background: #fff; }
-    .li-total { font-weight: 600; color: #111; text-align: right; }
-    .card-footer { padding: 8px 14px 10px; background: #fafafa; border-top: 1px solid #f3f4f6; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; font-size: 12px; color: #6b7280; flex-wrap: wrap; }
-    .card-footer-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-    .card-footer strong { color: #111; }
-    .card-expand-toggle { padding: 6px 14px; font-size: 12px; color: #6b7280; background: none; border: none; border-top: 1px solid #f3f4f6; cursor: pointer; width: 100%; text-align: left; }
-    .card-expand-toggle:hover { background: #fafafa; color: #1e3a5f; }
-    .inv-link { font-size: 12px; color: #3b82f6; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
-    .inv-link:hover { text-decoration: underline; }
-    /* ── Date section + sub-groups ── */
-    .date-section-hdr { display:flex; align-items:center; gap:10px; padding:12px 0 10px; }
-    .orders-groups-card { background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:4px; }
-    .sub-section-hdr { display:flex; align-items:center; gap:8px; padding:10px 14px; background:#fff; cursor:pointer; user-select:none; }
-    .sub-section-hdr:hover { background:#fafafa; }
-    .sub-section-label { font-size:11px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
-    .sub-section-count { font-size:12px; color:#9ca3af; font-weight:500; }
-    /* Mini cards */
-    .mini-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-    .mini-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
-    .mini-card-name   { font-weight: 600; color: #374151; }
-    .mini-card-detail { color: #6b7280; font-size: 12px; margin-top: 3px; }
-    .mini-card-items  { margin-top: 4px; color: #9ca3af; font-size: 11px; }
-    /* ── Settings/Notes/Features/Rules panels ── */
-    .panel { padding: 24px; max-width: 760px; margin: 0 auto; }
-    .panel h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: #111; }
-    .panel-desc { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
-    .form-group { margin-bottom: 20px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-    .form-group input[type="text"], .form-group select, .form-group textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; background: #fff; color: #111; }
-    .form-group input[type="text"]:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #1e3a5f; box-shadow: 0 0 0 3px rgba(30,58,95,.1); }
-    .form-group textarea { min-height: 240px; resize: vertical; font-family: inherit; line-height: 1.6; }
-    .form-hint { font-size: 12px; color: #9ca3af; margin-top: 5px; }
-    .toggle-list { display: flex; flex-direction: column; gap: 1px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-    .toggle-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: #fff; }
-    .toggle-row:not(:last-child) { border-bottom: 1px solid #f3f4f6; }
-    .toggle-row-info { flex: 1; }
-    .toggle-row-label { font-size: 14px; font-weight: 600; color: #111; }
-    .toggle-row-desc  { font-size: 12px; color: #6b7280; margin-top: 2px; }
-    .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider { position: absolute; inset: 0; background: #d1d5db; border-radius: 24px; cursor: pointer; transition: background .2s; }
-    .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-    .toggle-switch input:checked + .toggle-slider { background: #1e3a5f; }
-    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
-    .rule-list { margin-top: 8px; padding: 10px 14px; background: #f9fafb; border-radius: 7px; border: 1px solid #e5e7eb; font-size: 12px; color: #374151; line-height: 1.8; }
-    .rule-list li { list-style: disc; margin-left: 16px; }
-    /* ── Address Book ── */
-    .ab-wrap { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
-    .ab-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    .ab-toolbar h2 { font-size: 18px; font-weight: 700; color: #111; flex: 1; }
-    .ab-search { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 14px; width: 220px; max-width: 100%; }
-    .ab-search:focus { outline: none; border-color: #1e3a5f; }
-    .ab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-    .ab-card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-    .ab-card-header { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #f3f4f6; background: #fafafa; }
-    .ab-card-name { font-size: 15px; font-weight: 700; color: #111; }
-    .ab-card-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; }
-    .ab-field { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-    .ab-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; min-width: 76px; flex-shrink: 0; }
-    .ab-sqid { font-family: monospace; font-size: 11px; color: #374151; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
-    .ab-copy { font-size: 11px; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 0; flex-shrink: 0; }
-    .ab-copy:hover { text-decoration: underline; }
-    .ab-invoices { border-top: 1px solid #f3f4f6; padding: 10px 14px; }
-    .ab-inv-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-    .ab-inv-row { display: grid; grid-template-columns: 88px 60px 80px auto; gap: 6px; align-items: center; font-size: 12px; color: #374151; padding: 3px 0; border-bottom: 1px solid #f9fafb; }
-    .ab-inv-row:last-child { border-bottom: none; }
-    .ab-sq-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #1e3a5f; color: #fff; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-    .ab-sq-btn:hover { background: #162d4a; }
-    .ab-sqid-edit { font-family: monospace; font-size: 12px; padding: 3px 7px; border: 1.5px solid #d1d5db; border-radius: 5px; width: 100%; background: #fff; color: #111; }
-    .ab-sqid-edit:focus { outline: none; border-color: #1e3a5f; }
-    .ab-profile-row { display: flex; flex-direction: column; gap: 3px; padding: 8px 14px; border-top: 1px solid #f3f4f6; background: #f9fafb; }
-    .ab-profile-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; }
-    .ab-profile-val { font-size: 13px; color: #111; }
-    .ab-sync-btn { font-size: 11px; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 0; }
-    .ab-sync-btn:hover { text-decoration: underline; }
-    .ab-override-badge { font-size: 10px; font-weight: 700; color: #fff; background: #7c3aed; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
-    .color-key { display: flex; align-items: center; gap: 14px; padding: 8px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
-    .color-key-item { display: flex; align-items: center; gap: 6px; }
-    .color-key-swatch { width: 12px; height: 12px; border-radius: 3px; border: 2px solid; flex-shrink: 0; }
-    .ck-pending  { border-color: #dc2626; background: #fff9f9; }
-    .ck-drafted  { border-color: #fb923c; background: #fff8f3; }
-    .ck-sent     { border-color: #4ade80; background: #f0fdf4; }
-    .ab-empty { text-align: center; padding: 60px 20px; color: #9ca3af; font-size: 15px; }
-    /* Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: center; justify-content: center; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: #fff; border-radius: 12px; padding: 28px; max-width: 480px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.25); max-height: 85vh; overflow-y: auto; }
-    .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .modal p  { font-size: 14px; color: #4b5563; line-height: 1.5; }
-    .modal-list { margin: 12px 0; max-height: 200px; overflow-y: auto; font-size: 13px; color: #374151; border: 1px solid #e5e7eb; border-radius: 7px; padding: 10px 14px; line-height: 2; }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-    .complete-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
-    .complete-row:last-child { border-bottom: none; }
-    /* Toast */
-    .toast { position: fixed; bottom: 24px; right: 24px; background: #111; color: #fff; padding: 12px 18px; border-radius: 8px; font-size: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.3); z-index: 200; opacity: 0; transform: translateY(10px); transition: opacity .2s, transform .2s; pointer-events: none; }
-    .toast.show  { opacity: 1; transform: translateY(0); }
-    .toast.green { background: #16a34a; }
-    .toast.red   { background: #dc2626; }
-    /* ── Sardilli PO banner ── */
-    .sardilli-banner { background: #fffbeb; border-bottom: 2px solid #fcd34d; padding: 12px 24px; }
-    .sardilli-banner-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .sardilli-banner-label { font-size: 13px; font-weight: 700; color: #92400e; white-space: nowrap; }
-    .sardilli-banner-fields { display: flex; align-items: center; gap: 10px; flex: 1; flex-wrap: wrap; }
-    .sardilli-po-input { padding: 8px 12px; border: 1.5px solid #fcd34d; border-radius: 6px; font-size: 14px; font-weight: 600; background: #fff; color: #111; width: 200px; }
-    .sardilli-po-input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.15); }
-    .sardilli-preview { font-size: 12px; color: #6b7280; font-style: italic; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 640px) {
-      .header { padding: 12px 16px; }
-      .main { padding: 14px 16px; }
-      .toolbar { padding: 8px 16px; }
-      .orders-grid { grid-template-columns: 1fr; }
-      .panel { padding: 16px; }
-      .ab-wrap { padding: 14px 16px; }
+const ALWAYS_SKIP = [
+  'Allium Eatery',
+  "Taner's Samples",
+  'Westport Farmers Market',
+  'Tony Mycelium Farm',
+  'Herbaceous Catering',
+];
+
+const MONTH_END_SQ_IDS = new Set([
+  '7GA3VN6E747ZNMJGX8TZEBAQRW',
+  'KAS6T0EQ8Y9W5XKDHDFQYFXH1R',
+  'JJY24M0KAH1HQE2YTP9M71YS28',
+  '6QN9PJ6EHS1YV2Z09CRZXGXV0R',
+  'GWJMD64JG170Q10NEQFMAHQJRR',
+]);
+
+const FEE_EXEMPT_SQ_IDS = new Set([
+  'GAFSZME3RJ593SPY383011J44R',
+  '0Y45BH8J07QKMWD7JKAGTMRZ6C',
+  'KAS6T0EQ8Y9W5XKDHDFQYFXH1R',
+  'H19SXCHWXN2JXFTV6ZTR4STEXW',
+  'AEYAN54SHX24B34BM33S7RHS2C',
+]);
+
+const DELIVERY_FEE       = 5.00;
+const DELIVERY_THRESHOLD = 50.00;
+
+// Fallback Square Customer IDs for clients whose AppSheet record lacks reserve_3.
+// Key = client_name (lowercase, trimmed).
+const HARDCODED_SQ_IDS = {
+  'gallo': '6REHAQFW8S32X2HTB3559MSW3W',  // Giuseppe Castellano · Gallina Restaurant · Gallinarestaurant2013@gmail.com · +1 (917) 770-6458
+};
+
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+function jsonRes(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  });
+}
+function errRes(msg, status = 400) { return jsonRes({ error: msg }, status); }
+
+async function appsheetFind(env, table) {
+  const url = `https://api.appsheet.com/api/v2/apps/${env.APPSHEET_APP_ID}/tables/${encodeURIComponent(table)}/Action`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'ApplicationAccessKey': env.APPSHEET_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Action: 'Find', Properties: {} }),
+  });
+  if (!res.ok) { const t = await res.text(); throw new Error(`AppSheet ${table} (${res.status}): ${t.slice(0,200)}`); }
+  const t = await res.text();
+  return t ? JSON.parse(t) : [];
+}
+
+async function appsheetEdit(env, table, rows) {
+  const url = `https://api.appsheet.com/api/v2/apps/${env.APPSHEET_APP_ID}/tables/${encodeURIComponent(table)}/Action`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'ApplicationAccessKey': env.APPSHEET_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Action: 'Edit', Properties: {}, Rows: rows }),
+  });
+  if (!res.ok) { const t = await res.text(); throw new Error(`AppSheet edit (${res.status}): ${t.slice(0,200)}`); }
+  return res.json();
+}
+
+async function squareReq(env, method, path, body = null) {
+  const res = await fetch(`https://connect.squareup.com${path}`, {
+    method,
+    headers: {
+      'Authorization':  `Bearer ${env.SQUARE_ACCESS_TOKEN}`,
+      'Content-Type':   'application/json',
+      'Square-Version': '2024-01-18',
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const detail = (data.errors || []).map(e => e.detail || e.code).join('; ');
+    throw new Error(`Square ${method} ${path} → ${res.status}: ${detail || JSON.stringify(data).slice(0,300)}`);
+  }
+  return data;
+}
+
+function normalizeProductName(name) {
+  return (name || '').replace(/\s+2\.0\s+/g, ' ').trim();
+}
+
+function getStopNum(order) {
+  const raw = order.stop_number ?? order['Stop Number'] ?? order['stop#'] ?? order['Stop#'] ?? order.stop ?? null;
+  if (raw === null || raw === '' || raw === undefined) return null;
+  const n = parseFloat(raw);
+  return isNaN(n) ? null : n;
+}
+
+function buildLineItem(detail) {
+  const qty        = parseFloat(detail.quantity_boxes) || 1;
+  const unitPrice  = parseFloat(detail.unit_price)     || 0;
+  const totalPrice = parseFloat(detail.total_price)    || 0;
+  const dtype      = (detail.discount_type  || '').toUpperCase();
+  const dbasis     = (detail.discount_basis || '').toUpperCase();
+  const damount    = parseFloat(detail.discount_amount)  || 0;
+  const dpercent   = parseFloat(detail.discount_percent) || 0;
+
+  let finalUnit = unitPrice;
+  if (dtype && dtype !== 'NONE') {
+    if (dtype === 'AMOUNT') {
+      finalUnit = dbasis === 'BOX' ? unitPrice - damount : (unitPrice * qty - damount) / qty;
+    } else if (dtype === 'PERCENT') {
+      finalUnit = unitPrice * (1 - dpercent / 100);
     }
-  </style>
-</head>
-<body>
-<!-- ── Header ── -->
-<div class="header">
-  <div>
-    <div class="header-title">Invoice Generator</div>
-    <div class="header-sub">High Ridge Hydroponics</div>
-  </div>
-  <div class="header-right">
-    <a class="btn-sq-dash" href="https://app.squareup.com/dashboard/invoices?currentUnitToken=BYZ5P0549Z01F" target="_blank">
-      ⬡ Square Dashboard
-    </a>
-    <div class="date-row" style="display:flex;align-items:center;gap:6px">
-      <label for="datePicker">Fulfillment date</label>
-      <button onclick="shiftDate(-1)" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700" title="Previous day">◀</button>
-      <input type="date" id="datePicker" />
-      <button onclick="shiftDate(1)" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700" title="Next day">▶</button>
-    </div>
-    <button class="btn btn-load" id="btnLoad">Load orders</button>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-      <button class="btn btn-load" id="btnRefresh" style="display:none;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);padding:8px 12px" title="Refresh (re-load same date)">↺</button>
-      <div id="lastRefreshTime" style="display:none;font-size:10px;color:rgba(255,255,255,.55);white-space:nowrap"></div>
-    </div>
-  </div>
-</div>
-<!-- ── Tab nav ── -->
-<div class="tab-nav">
-  <button class="tab-btn active" data-tab="orders">📋 Invoices</button>
-  <button class="tab-btn" data-tab="addressbook">📒 Address Book</button>
-  <button class="tab-btn" data-tab="outstanding">💰 Outstanding</button>
-  <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
-  <button class="tab-btn" data-tab="notes">📝 Notes</button>
-  <button class="tab-btn" data-tab="features">🔧 Features</button>
-  <button class="tab-btn" data-tab="rules">📏 Rules</button>
-</div>
-<!-- ── Toolbar ── -->
-<div class="toolbar" id="toolbar" style="display:none">
-  <span class="toolbar-stat" id="statText"></span>
-  <div class="toolbar-sep"></div>
-  <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select all pending</button>
-  <button class="btn btn-sm btn-ghost" onclick="selectAllDrafted()">Select all drafts</button>
-  <button class="btn btn-sm btn-ghost" onclick="deselectAll()">Deselect all</button>
-  <div class="toolbar-sep"></div>
-  <button class="btn btn-sm btn-month-end" id="btnMonthEnd" onclick="toggleMonthEnd()">📅 Month-end mode</button>
-  <div class="toolbar-spacer"></div>
-  <div class="run-status" id="runStatus">
-    <div class="run-dot blue" id="runDot"></div>
-    <span id="runStatusText"></span>
-  </div>
-  <button class="btn btn-draft" id="btnDraft" style="display:none">Create drafts</button>
-  <button class="btn btn-send"  id="btnSend"  style="display:none">Send Now</button>
-</div>
-<!-- ── Color key ── -->
-<div class="color-key">
-  <div class="color-key-item"><div class="color-key-swatch ck-pending"></div> Pending</div>
-  <div class="color-key-item"><div class="color-key-swatch ck-drafted"></div> Drafted</div>
-  <div class="color-key-item"><div class="color-key-swatch ck-sent"></div> Sent</div>
-</div>
-<div id="sardelliPOBanner" class="sardilli-banner" style="display:none">
-  <div class="sardilli-banner-inner">
-    <span class="sardilli-banner-label">🐟 Sardilli PO Number</span>
-    <div class="sardilli-banner-fields">
-      <input type="text" id="sardelliPOInput" class="sardilli-po-input"
-             placeholder="e.g. 00134619"
-             oninput="applySardelliPO()"
-             onblur="applySardelliPO()">
-      <span class="sardilli-preview" id="sardelliPOPreview">Enter PO number to include in invoice title</span>
-    </div>
-    <button onclick="document.getElementById('sardelliPOBanner').style.display='none'" title="Dismiss" style="background:none;border:none;cursor:pointer;font-size:18px;color:#92400e;padding:0 4px;line-height:1;opacity:.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✕</button>
-  </div>
-</div>
-<!-- ── Tab: Orders ── -->
-<div id="tab-orders">
-  <div class="main">
-    <div class="state-box" id="stateEmpty">
-      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:12px;opacity:.4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-      <p>Pick a fulfillment date and click <strong>Load orders</strong></p>
-    </div>
-    <div class="state-box" id="stateLoading" style="display:none">
-      <div style="margin:0 auto 12px;width:36px;height:36px;border:3px solid #d1fae5;border-top-color:#1e3a5f;border-radius:50%;animation:spin .8s linear infinite"></div>
-      <p>Loading orders from AppSheet…</p>
-    </div>
-    <div id="stateOrders" style="display:none"></div>
-  </div>
-</div>
-<!-- ── Tab: Address Book ── -->
-<div id="tab-addressbook" style="display:none">
-  <div class="ab-wrap">
-    <div class="ab-toolbar">
-      <h2>📒 Address Book</h2>
-      <input type="text" class="ab-search" id="abSearch" placeholder="Search customers…" oninput="renderAddressBook()">
-      <button class="btn btn-sm btn-ghost" onclick="clearAddressBook()">Clear all</button>
-    </div>
-    <div id="abEmpty" class="ab-empty">No customers yet. Load orders to build your address book automatically.</div>
-    <div id="abGrid" class="ab-grid" style="display:none"></div>
-  </div>
-</div>
-<!-- ── Tab: Outstanding ── -->
-<div id="tab-outstanding" style="display:none">
-  <div class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <h2 style="margin:0">💰 Outstanding Invoices</h2>
-      <button class="btn btn-sm btn-ghost" onclick="loadOutstanding()">↺ Refresh</button>
-    </div>
-    <div id="outstandingState" style="color:#9ca3af;font-size:14px;padding:20px 0">Click Refresh to load unpaid invoices.</div>
-    <div id="outstandingList" style="display:none"></div>
-  </div>
-</div>
-<!-- ── Tab: Settings ── -->
-<div id="tab-settings" style="display:none">
-  <div class="panel">
-    <h2>Settings</h2>
-    <p class="panel-desc">Configuration for the invoice dashboard.</p>
-    <div class="form-group">
-      <label for="settingWorkerUrl">Cloudflare Worker URL</label>
-      <input type="text" id="settingWorkerUrl" placeholder="https://your-worker.workers.dev" />
-      <div class="form-hint">Backend Worker that fetches AppSheet data and calls Square.</div>
-    </div>
-    <div class="form-group">
-      <label for="settingDefaultDate">Default date on load</label>
-      <select id="settingDefaultDate">
-        <option value="today">Today</option>
-        <option value="tomorrow">Tomorrow</option>
-        <option value="nextThursday">Next Thursday (delivery day)</option>
-      </select>
-    </div>
-    <button class="btn btn-save" id="btnSaveSettings">Save settings</button>
-  </div>
-</div>
-<!-- ── Tab: Notes ── -->
-<div id="tab-notes" style="display:none">
-  <div class="panel">
-    <h2>Notes</h2>
-    <p class="panel-desc">Freeform notes — saved automatically.</p>
-    <div class="form-group">
-      <textarea id="notesArea" placeholder="Type your notes here…"></textarea>
-    </div>
-    <div class="form-hint" id="notesSaved" style="color:#16a34a;font-weight:600"></div>
-  </div>
-</div>
-<!-- ── Tab: Features ── -->
-<div id="tab-features" style="display:none">
-  <div class="panel">
-    <h2>Features</h2>
-    <p class="panel-desc">Toggle UI features. Saved in your browser.</p>
-    <div class="toggle-list">
-      <div class="toggle-row">
-        <div class="toggle-row-info"><div class="toggle-row-label">Auto-expand order cards</div><div class="toggle-row-desc">Show line items by default without clicking "Show items"</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="featAutoExpand" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-info"><div class="toggle-row-label">Show Square Customer ID on cards</div><div class="toggle-row-desc">Display the Square Customer ID below the customer name</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="featShowSqId" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-info"><div class="toggle-row-label">Show WoW diff panel on cards</div><div class="toggle-row-desc">Show "vs last week" expandable diff panel on each order card</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="featShowWow" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-info"><div class="toggle-row-label">Show "Upcoming" section</div><div class="toggle-row-desc">Display customers who ordered last week but not today, and skipped orders</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="featShowNotInToday" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-info"><div class="toggle-row-label">Show invoice title on cards</div><div class="toggle-row-desc">Display the invoice title (e.g. "06/26/2026 Invoice") on each card</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="featShowInvTitle" checked onchange="saveFeatures()"><span class="toggle-slider"></span></label>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- ── Tab: Rules ── -->
-<div id="tab-rules" style="display:none">
-  <div class="panel">
-    <h2>Rules</h2>
-    <p class="panel-desc">Business rules applied when loading orders. Changes take effect on next load.</p>
-    <div class="toggle-list">
-      <div class="toggle-row">
-        <div class="toggle-row-info"><div class="toggle-row-label">Skip Home Delivery customers</div><div class="toggle-row-desc">Home Delivery type accounts are never invoiced via this tool</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="ruleSkipHomeDelivery" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Skip always-excluded customers</div>
-          <div class="toggle-row-desc"><ul class="rule-list" style="margin:4px 0 0"><li>Allium Eatery</li><li>Taner's Samples</li><li>Westport Farmers Market</li><li>Tony Mycelium Farm</li><li>Herbaceous Catering</li></ul></div>
-        </div>
-        <label class="toggle-switch"><input type="checkbox" id="ruleSkipAlways" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-info">
-          <div class="toggle-row-label">Skip month-end billing customers</div>
-          <div class="toggle-row-desc"><ul class="rule-list" style="margin:4px 0 0"><li>Bora (Chef Yoel)</li><li>Terra Sole</li><li>Tavern at Graybarns</li><li>Tequila Escape</li><li>Gallo Ristorante</li></ul></div>
-        </div>
-        <label class="toggle-switch"><input type="checkbox" id="ruleSkipMonthEnd" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-info"><div class="toggle-row-label">Skip already-invoiced orders</div><div class="toggle-row-desc">Orders marked "Sent" in AppSheet are excluded</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="ruleSkipAlreadySent" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-info"><div class="toggle-row-label">Apply $50 delivery fee threshold</div><div class="toggle-row-desc">Add $5 delivery fee for orders under $50 (except exempt accounts)</div></div>
-        <label class="toggle-switch"><input type="checkbox" id="ruleDeliveryFee" checked onchange="saveRules()"><span class="toggle-slider"></span></label>
-      </div>
-    </div>
-    <div class="form-hint" style="margin-top:14px">⚠️ Rule changes take effect on next <strong>Load orders</strong>.</div>
-  </div>
-</div>
-<!-- ── Modals ── -->
-<div class="modal-overlay" id="modalDraft">
-  <div class="modal">
-    <h3>Create draft invoices?</h3>
-    <p>This will create Square draft invoices. <strong>No emails sent yet.</strong></p>
-    <div class="modal-list" id="modalDraftList"></div>
-    <div class="modal-actions">
-      <button class="btn btn-cancel" onclick="closeModal('modalDraft')">Cancel</button>
-      <button class="btn btn-confirm" id="btnConfirmDraft">Yes, create drafts</button>
-    </div>
-  </div>
-</div>
-<div class="modal-overlay" id="modalSend">
-  <div class="modal">
-    <h3>Send invoices?</h3>
-    <p>This will <strong>email invoices to customers</strong> and mark them sent in AppSheet. Cannot be undone.</p>
-    <div class="modal-list" id="modalSendList"></div>
-    <div class="modal-actions">
-      <button class="btn btn-cancel" onclick="closeModal('modalSend')">Cancel</button>
-      <button class="btn btn-confirm-send" id="btnConfirmSend">Yes, send invoices</button>
-    </div>
-  </div>
-</div>
-<div class="modal-overlay" id="modalComplete">
-  <div class="modal">
-    <h3>🎉 Invoice Run Complete</h3>
-    <p id="completeSummaryText" style="margin-bottom:12px"></p>
-    <div id="completeList" style="border:1px solid #e5e7eb;border-radius:7px;padding:10px 14px;max-height:260px;overflow-y:auto;font-size:13px;"></div>
-    <div class="modal-actions">
-      <button class="btn btn-save" onclick="closeModal('modalComplete')">Done</button>
-    </div>
-  </div>
-</div>
-<div class="toast" id="toast"></div>
-<script>
-// ── Config ──────────────────────────────────────────────────────────────────────
-let WORKER_URL = localStorage.getItem('workerUrl') || 'https://aged-mouse-f451.highridgehydroponics.workers.dev';
-const SQUARE_DASH_URL = 'https://app.squareup.com/dashboard/invoices?currentUnitToken=BYZ5P0549Z01F';
-// ── State ───────────────────────────────────────────────────────────────────────
-let state = { orders: [], notInToday: [], skipped: [] };
-let monthEndMode = false;
-// ── Persistent storage ──────────────────────────────────────────────────────────
-function loadSettings() {
-  document.getElementById('settingWorkerUrl').value   = WORKER_URL;
-  document.getElementById('settingDefaultDate').value = localStorage.getItem('defaultDate') || 'nextThursday';
+    if (Math.abs(Math.round(finalUnit * qty * 100) - Math.round(totalPrice * 100)) > 2) finalUnit = totalPrice / qty;
+  }
+  const detailStatus = detail.status || detail['packed_out?'] || detail.packed_out || '';
+  return {
+    name:      normalizeProductName(detail.product_name),
+    qty,
+    unitPrice: Math.round(finalUnit * 100) / 100,
+    total:     Math.round(totalPrice * 100) / 100,
+    status:    detailStatus,
+  };
 }
-function saveSettings() {
-  const url = document.getElementById('settingWorkerUrl').value.trim();
-  if (url) { WORKER_URL = url; localStorage.setItem('workerUrl', url); }
-  localStorage.setItem('defaultDate', document.getElementById('settingDefaultDate').value);
-  showToast('Settings saved', 'green');
+
+function skipReason(order, clientMap, includeMonthEnd = false) {
+  const client     = clientMap[order.client] || {};
+  const clientType = (client.client_type_text || '').toLowerCase();
+  const name       = (order.client_name || '').trim();
+  const sqId       = (client.reserve_3  || '').trim() || HARDCODED_SQ_IDS[name.toLowerCase()] || '';
+  if (clientType === 'home delivery') return 'Home delivery';
+  if (ALWAYS_SKIP.some(n => n.toLowerCase() === name.toLowerCase())) return 'Always skip';
+  // Already-invoiced orders are NOT skipped — they appear in Today's Orders with status 'sent'
+  // so the Square check phase can populate their invoice number, paid status, and link.
+  if (sqId && MONTH_END_SQ_IDS.has(sqId) && !includeMonthEnd) return 'Month-end billing';
+  return null;
 }
-function loadFeatures() {
-  const f = JSON.parse(localStorage.getItem('features') || '{}');
-  document.getElementById('featAutoExpand').checked     = f.autoExpand    !== false;
-  document.getElementById('featShowSqId').checked       = f.showSqId      !== false;
-  document.getElementById('featShowWow').checked        = f.showWow       !== false;
-  document.getElementById('featShowNotInToday').checked = f.showNotInToday!== false;
-  document.getElementById('featShowInvTitle').checked   = f.showInvTitle  !== false;
-}
-function saveFeatures() {
-  localStorage.setItem('features', JSON.stringify({
-    autoExpand:     document.getElementById('featAutoExpand').checked,
-    showSqId:       document.getElementById('featShowSqId').checked,
-    showWow:        document.getElementById('featShowWow').checked,
-    showNotInToday: document.getElementById('featShowNotInToday').checked,
-    showInvTitle:   document.getElementById('featShowInvTitle').checked,
-  }));
-  if (document.getElementById('toolbar').dataset.loaded === '1') renderOrders();
-}
-function getFeature(key) { const f = JSON.parse(localStorage.getItem('features') || '{}'); return f[key] !== false; }
-function loadRules() {
-  const r = JSON.parse(localStorage.getItem('rules') || '{}');
-  document.getElementById('ruleSkipHomeDelivery').checked = r.skipHomeDelivery !== false;
-  document.getElementById('ruleSkipAlways').checked       = r.skipAlways       !== false;
-  document.getElementById('ruleSkipMonthEnd').checked     = r.skipMonthEnd     !== false;
-  document.getElementById('ruleSkipAlreadySent').checked  = r.skipAlreadySent  !== false;
-  document.getElementById('ruleDeliveryFee').checked      = r.deliveryFee      !== false;
-}
-function saveRules() {
-  localStorage.setItem('rules', JSON.stringify({
-    skipHomeDelivery: document.getElementById('ruleSkipHomeDelivery').checked,
-    skipAlways:       document.getElementById('ruleSkipAlways').checked,
-    skipMonthEnd:     document.getElementById('ruleSkipMonthEnd').checked,
-    skipAlreadySent:  document.getElementById('ruleSkipAlreadySent').checked,
-    deliveryFee:      document.getElementById('ruleDeliveryFee').checked,
-  }));
-}
-function getRules() { return JSON.parse(localStorage.getItem('rules') || '{}'); }
-let notesTimer;
-function loadNotes() { document.getElementById('notesArea').value = localStorage.getItem('notes') || ''; }
-document.getElementById('notesArea').addEventListener('input', () => {
-  localStorage.setItem('notes', document.getElementById('notesArea').value);
-  clearTimeout(notesTimer);
-  const el = document.getElementById('notesSaved');
-  el.textContent = '';
-  notesTimer = setTimeout(() => { el.textContent = '✓ Saved'; setTimeout(() => { el.textContent = ''; }, 1500); }, 600);
-});
-// ── Outstanding Invoices ────────────────────────────────────────────────────────
-async function loadOutstanding() {
-  const state$ = document.getElementById('outstandingState');
-  const list   = document.getElementById('outstandingList');
-  if (!state$ || !list) return;
-  state$.textContent = 'Loading…';
-  state$.style.display = '';
-  list.style.display = 'none';
+
+/**
+ * Fetches the hrh_client_id from a Square order's metadata.
+ * Returns null if the order has no tag (legacy invoices created before this feature).
+ *
+ * Two AppSheet clients that share the same Square Customer ID will both query
+ * the same Square invoices.  The hrh_client_id stored in the order metadata
+ * (not visible to customers) disambiguates which invoice belongs to which client.
+ * Legacy invoices with no metadata match any client (backwards-compatible).
+ */
+async function fetchOrderClientId(env, orderId) {
+  if (!orderId) return null;
   try {
-    const res  = await fetch(`${WORKER_URL}/outstanding`);
-    const data = await res.json();
-    const invoices = data.invoices || [];
-    if (!invoices.length) { state$.textContent = 'No unpaid invoices — all clear! ✓'; return; }
-    state$.style.display = 'none';
-    // Group by customer name
-    const byCustomer = {};
-    for (const inv of invoices) {
-      const name = inv.primary_recipient?.customer_id || 'Unknown';
-      const displayName = inv.title?.replace(/\d{2}\/\d{2}\/\d{4}\s+/,'').replace(' Invoice','').trim() || inv.primary_recipient?.email_address || name;
-      const key = inv.primary_recipient?.customer_id || displayName;
-      if (!byCustomer[key]) byCustomer[key] = { name: displayName, invoices: [] };
-      byCustomer[key].invoices.push(inv);
-    }
-    // Calculate totals
-    const totalOwed = invoices.reduce((s, inv) => {
-      const amt = inv.payment_requests?.[0]?.computed_amount_money?.amount || 0;
-      return s + amt;
-    }, 0) / 100;
-    // Build table
-    let html = `<div style="margin-bottom:12px;font-size:14px;color:#374151"><strong>${invoices.length}</strong> unpaid invoice${invoices.length !== 1 ? 's' : ''} · Total outstanding: <strong style="color:#dc2626">$${totalOwed.toFixed(2)}</strong></div>`;
-    html += `<table class="orders-table"><thead><tr>
-      <th>Customer</th>
-      <th>Invoice Title</th>
-      <th class="th-center">Invoice #</th>
-      <th class="th-center">Due Date</th>
-      <th class="th-center">Status</th>
-      <th class="th-right">Amount</th>
-    </tr></thead><tbody>`;
-    for (const inv of invoices) {
-      const amt     = (inv.payment_requests?.[0]?.computed_amount_money?.amount || 0) / 100;
-      const due     = inv.payment_requests?.[0]?.due_date || '—';
-      const status  = inv.status || '—';
-      const isOverdue = due !== '—' && due < new Date().toISOString().slice(0,10);
-      const dueFmt  = due !== '—' ? (() => { const [y,m,d] = due.split('-'); return `${m}/${d}/${y}`; })() : '—';
-      const customerName = inv.title?.split(' Invoice')[0] || inv.primary_recipient?.email_address || '—';
-      html += `<tr style="${isOverdue ? 'background:#fff7f7' : ''}">
-        <td class="tbl-name">${esc(customerName)}</td>
-        <td style="font-size:13px;color:#374151">${esc(inv.title || '—')}</td>
-        <td class="tbl-center"><span class="tbl-inv-num">${inv.public_url ? `<a href="${esc(inv.public_url)}" target="_blank">${esc(inv.invoice_number || '—')}</a>` : esc(inv.invoice_number || '—')}</span></td>
-        <td class="tbl-center" style="font-size:13px;${isOverdue ? 'color:#dc2626;font-weight:700' : 'color:#6b7280'}">${esc(dueFmt)}${isOverdue ? ' ⚠' : ''}</td>
-        <td class="tbl-center"><span class="badge ${status === 'PARTIALLY_PAID' ? 'badge-bring' : ''}" style="${status === 'UNPAID' ? 'background:#fee2e2;color:#991b1b' : ''}">${esc(status)}</span></td>
-        <td class="tbl-right" style="font-weight:700;color:#111">$${amt.toFixed(2)}</td>
-      </tr>`;
-    }
-    html += '</tbody></table>';
-    list.innerHTML = html;
-    list.style.display = '';
-  } catch (e) {
-    state$.textContent = 'Failed to load: ' + e.message;
+    const data = await squareReq(env, 'GET', `/v2/orders/${orderId}`);
+    return data.order?.metadata?.hrh_client_id || null;
+  } catch {
+    return null;
   }
 }
-// ── Address Book ────────────────────────────────────────────────────────────────
-// Apply address-book Square ID overrides to orders before processing.
-// If a user has set a squareCustomerIdOverride for a customer in the address book,
-// that ID replaces the one from AppSheet for all invoice operations this session.
-function applySquareIdOverrides(orders) {
-  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
-  const entries = Object.values(book).filter(e => e.squareCustomerIdOverride);
-  if (!entries.length) return;
+
+async function handleGetOrders(env, searchParams) {
+  const date = searchParams.get('date');
+  if (!date || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(date)) return errRes('date param required in MM/DD/YYYY');
+  const includeMonthEnd = searchParams.get('includeMonthEnd') === '1';
+
+  const [mm, dd, yyyy] = date.split('/').map(Number);
+  const lwDate = new Date(yyyy, mm - 1, dd);
+  lwDate.setDate(lwDate.getDate() - 7);
+  const lastWeekDate = [
+    String(lwDate.getMonth() + 1).padStart(2, '0'),
+    String(lwDate.getDate()).padStart(2, '0'),
+    lwDate.getFullYear(),
+  ].join('/');
+
+  const [allOrders, allClients, allDetails] = await Promise.all([
+    appsheetFind(env, 'order'),
+    appsheetFind(env, 'client'),
+    appsheetFind(env, 'order_detail'),
+  ]);
+
+  const clientMap = Object.fromEntries(allClients.map(c => [c.id, c]));
+  const detailsByOrder = {};
+  for (const d of allDetails) {
+    if (!detailsByOrder[d.order]) detailsByOrder[d.order] = [];
+    detailsByOrder[d.order].push(d);
+  }
+
+  const todayOrders    = allOrders.filter(o => o.fulfillment_date === date);
+  const lastWeekOrders = allOrders.filter(o => o.fulfillment_date === lastWeekDate);
+  const todayClientIds = new Set(todayOrders.map(o => o.client));
+
+  const orders  = [];
+  const skipped = [];
+
+  for (const order of todayOrders) {
+    const client = clientMap[order.client] || {};
+    const reason = skipReason(order, clientMap, includeMonthEnd);
+    if (reason) { skipped.push({ customerName: order.client_name, reason }); continue; }
+
+    const alreadySent = order['invoice_sent?'] === 'Sent';
+    const sqId    = (client.reserve_3 || '').trim() || HARDCODED_SQ_IDS[(order.client_name || '').toLowerCase().trim()] || null;
+    const details = detailsByOrder[order.id] || [];
+    const lineItems = details.map(buildLineItem).sort((a, b) => a.name.localeCompare(b.name));
+    const subtotal    = Math.round(lineItems.reduce((s, l) => s + l.total, 0) * 100) / 100;
+    // Pickup orders never get a delivery fee regardless of subtotal or exempt list
+    const fulfillmentType = (order.fulfillment_type || order['Fulfillment Type'] || '').toLowerCase().trim();
+    const isPickup    = fulfillmentType === 'pickup';
+    const feeExempt   = isPickup || (sqId && FEE_EXEMPT_SQ_IDS.has(sqId));
+    const deliveryFee = (subtotal < DELIVERY_THRESHOLD && !feeExempt) ? DELIVERY_FEE : 0;
+    const total       = Math.round((subtotal + deliveryFee) * 100) / 100;
+
+    // AppSheet order status field — try common column name variations
+    const appsheetStatus = (
+      order.status || order['Status'] || order.order_status || order['Order Status'] || ''
+    ).trim() || null;
+
+    orders.push({
+      id: order.id,
+      clientId: order.client,           // AppSheet client table PK — unique per location
+      invoiceTitle:     `${date} Invoice`,
+      customerName:     order.client_name,
+      customerEmail:    client.email_address || null,
+      squareCustomerId: sqId,
+      squareConflict:   sqId ? null : `No Square Customer ID on file for ${order.client_name}`,
+      bringInvoice:     (client['bring_invoice?'] || '').toUpperCase() === 'Y',
+      stopNum:          getStopNum(order),
+      fulfillmentType:  isPickup ? 'pickup' : 'delivery',
+      appsheetStatus,
+      lineItems, subtotal, deliveryFee, total,
+      status: alreadySent ? 'sent' : 'pending',
+      squareOrderId: null, squareOrderVersion: null,
+      squareInvoiceId: null, squareInvoiceUrl: null, squareInvoiceNumber: null,
+      squareStatus: null,
+      fulfillmentDate: order.order_fulfilled_datetime || order.fulfilled_datetime || order.fulfillment_datetime || order.fulfillment_date || null,
+      wow: null,
+    });
+  }
+
+  // Week-over-week diff
+  const lastWeekByClient = {};
+  for (const o of lastWeekOrders) lastWeekByClient[o.client] = o;
+
   for (const order of orders) {
-    const match = entries.find(e =>
-      (e.name || '').toLowerCase().trim() === (order.customerName || '').toLowerCase().trim()
-    );
-    if (match) {
-      order.squareCustomerId = match.squareCustomerIdOverride;
-      order.squareConflict   = null; // clear any "no Square ID" warning
+    const lwOrder = lastWeekByClient[order.clientId];
+    if (!lwOrder) { order.wow = { status: 'new', deltaTotal: 0, items: [] }; continue; }
+
+    const thisMap = {};
+    order.lineItems.forEach(li => { thisMap[li.name] = li; });
+    const lastMap = {};
+    (detailsByOrder[lwOrder.id] || []).forEach(d => { const li = buildLineItem(d); lastMap[li.name] = li; });
+
+    const allNames = new Set([...Object.keys(thisMap), ...Object.keys(lastMap)]);
+    let anyChange = false, deltaTotal = 0;
+    const items = [];
+
+    for (const name of allNames) {
+      const t = thisMap[name], l = lastMap[name];
+      if (t && !l) {
+        items.push({ name, change: 'new', thisQty: t.qty, thisTotal: t.total, lastQty: null, lastTotal: null });
+        deltaTotal += t.total; anyChange = true;
+      } else if (!t && l) {
+        items.push({ name, change: 'dropped', lastQty: l.qty, lastTotal: l.total, thisQty: null, thisTotal: null });
+        deltaTotal -= l.total; anyChange = true;
+      } else {
+        const changed = Math.abs(t.qty - l.qty) > 0.001 || Math.abs(t.unitPrice - l.unitPrice) > 0.005;
+        items.push({ name, change: changed ? 'changed' : 'same', thisQty: t.qty, thisTotal: t.total, lastQty: l.qty, lastTotal: l.total });
+        if (changed) { deltaTotal += t.total - l.total; anyChange = true; }
+      }
+    }
+
+    const wowOrd = ['new','changed','same','dropped'];
+    items.sort((a, b) => wowOrd.indexOf(a.change) - wowOrd.indexOf(b.change));
+    order.wow = { status: anyChange ? 'changed' : 'same', deltaTotal: Math.round(deltaTotal * 100) / 100, items };
+  }
+
+  const notInToday = lastWeekOrders
+    .filter(o => !todayClientIds.has(o.client) && !skipReason(o, clientMap, includeMonthEnd))
+    .map(o => ({
+      customerName: o.client_name,
+      lastTotal: Math.round((detailsByOrder[o.id] || []).reduce((s, d) => s + (parseFloat(d.total_price) || 0), 0) * 100) / 100,
+      items: (detailsByOrder[o.id] || []).map(d => ({ name: normalizeProductName(d.product_name), qty: parseFloat(d.quantity_boxes) || 0 })),
+    }));
+
+  return jsonRes({ targetDate: date, orders, notInToday, skipped });
+}
+
+async function handleSquareCheck(env, request) {
+  let body;
+  try { body = await request.json(); } catch { return errRes('Invalid JSON body'); }
+  const { orders } = body;
+  if (!Array.isArray(orders) || !orders.length) return errRes('orders array required');
+
+  const SQ_STATUS_MAP = { DRAFT: 'drafted', UNPAID: 'sent', PARTIALLY_PAID: 'sent', PAID: 'sent', PAYMENT_PENDING: 'sent' };
+  const priority      = { DRAFT: 0, UNPAID: 1, PARTIALLY_PAID: 2, PAID: 3, PAYMENT_PENDING: 4 };
+
+  const results = {};
+
+  // Group orders by squareCustomerId so we can:
+  //   1. Fetch invoices once per unique customer (efficient)
+  //   2. Process sibling orders (restaurant groups sharing one Square Customer ID)
+  //      sequentially so each sibling claims a distinct invoice — no two orders
+  //      ever end up pointing to the same Square invoice URL.
+  const groups = {};
+  for (const order of orders) {
+    if (!order.squareCustomerId) continue;
+    if (!groups[order.squareCustomerId]) groups[order.squareCustomerId] = { orders: [], invoiceData: null, custData: null };
+    groups[order.squareCustomerId].orders.push(order);
+  }
+
+  // Fetch Square data for all unique customers in parallel
+  await Promise.all(Object.entries(groups).map(async ([sqId, group]) => {
+    try {
+      const [invoiceData, custData] = await Promise.all([
+        squareReq(env, 'GET', `/v2/invoices?location_id=${env.SQUARE_LOCATION_ID}&customer_id=${sqId}&limit=200`),
+        squareReq(env, 'GET', `/v2/customers/${sqId}`).catch(() => null),
+      ]);
+      group.invoiceData = invoiceData;
+      group.custData    = custData;
+    } catch (e) {
+      console.warn(`[sq-check] fetch for ${sqId}: ${e.message}`);
+    }
+  }));
+
+  // Process each customer group sequentially, tracking claimed invoice IDs.
+  // Within a group, exact clientId matches are preferred over legacy (null) invoices,
+  // so each sibling grabs its own correctly-tagged invoice before falling back to
+  // untagged legacy ones.  Once claimed, an invoice cannot be assigned to another order.
+  for (const group of Object.values(groups)) {
+    if (!group.invoiceData) continue;
+
+    const customerEmail = group.custData?.customer?.email_address || null;
+    const allInvoices   = (group.invoiceData.invoices || []).filter(inv => inv.status !== 'CANCELED');
+    const claimed       = new Set(); // invoice IDs already assigned to an order in this group
+
+    for (const order of group.orders) {
+      try {
+        const titleMatches = allInvoices.filter(inv =>
+          inv.title === order.invoiceTitle && !claimed.has(inv.id)
+        );
+
+        // Separate exact-clientId matches from legacy (no metadata) matches.
+        // Exact matches take priority so siblings don't steal each other's invoices.
+        const exactMatches  = [];
+        const legacyMatches = [];
+        for (const inv of titleMatches) {
+          const orderClientId = await fetchOrderClientId(env, inv.order_id);
+          if (orderClientId === order.clientId) exactMatches.push(inv);
+          else if (orderClientId === null)       legacyMatches.push(inv);
+          // different non-null clientId → belongs to another sibling, skip
+        }
+
+        // Prefer exact matches; within each tier sort by status priority
+        const sortByPriority = arr => arr.sort((a, b) => (priority[a.status] ?? 9) - (priority[b.status] ?? 9));
+        const matches = [...sortByPriority(exactMatches), ...sortByPriority(legacyMatches)];
+
+        if (!matches.length) {
+          if (customerEmail) results[order.id] = { customerEmail };
+          continue;
+        }
+
+        const inv = matches[0];
+        claimed.add(inv.id); // prevent sibling orders from claiming the same invoice
+
+        results[order.id] = {
+          status:              SQ_STATUS_MAP[inv.status] || 'pending',
+          squareInvoiceId:     inv.id,
+          squareInvoiceUrl:    inv.public_url || null,
+          squareInvoiceNumber: inv.invoice_number || null,
+          squareOrderId:       inv.order_id || null,
+          squareStatus:        inv.status || null,
+          customerEmail,
+        };
+      } catch (e) {
+        console.warn(`[sq-check] ${order.customerName}: ${e.message}`);
+      }
     }
   }
-}
-function updateAddressBook(orders) {
-  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
-  for (const o of orders) {
-    const key = o.squareCustomerId || `name:${o.customerName}`;
-    if (!book[key]) {
-      book[key] = { name: o.customerName, email: o.customerEmail, squareCustomerId: o.squareCustomerId, stopNum: o.stopNum, bringInvoice: o.bringInvoice, invoices: [], lastSeen: '' };
-    } else {
-      book[key].email  = o.customerEmail || book[key].email;
-      book[key].stopNum = o.stopNum;
-      book[key].bringInvoice = o.bringInvoice;
-      if (o.squareCustomerId) book[key].squareCustomerId = o.squareCustomerId;
-    }
-    book[key].lastSeen = (o.invoiceTitle || '').split(' ')[0] || book[key].lastSeen;
-  }
-  localStorage.setItem('addressBook', JSON.stringify(book));
-}
-function updateAddressBookWithInvoices(orders) {
-  // Called after sending invoices AND after the Square check phase so that
-  // history builds automatically from Square data, not just from this session's sends.
-  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
-  for (const o of orders) {
-    if (!o.squareInvoiceNumber) continue;
-    const key = o.squareCustomerId || `name:${o.customerName}`;
-    if (!book[key]) continue;
-    const date = (o.invoiceTitle || '').split(' ')[0] || '';
-    // Update in place if the same invoice number already recorded, else prepend
-    const existing = book[key].invoices.findIndex(inv => inv.invoiceNumber === o.squareInvoiceNumber);
-    const entry = { date, total: o.total, invoiceNumber: o.squareInvoiceNumber, squareInvoiceUrl: o.squareInvoiceUrl || null, status: o.squareStatus || o.status || 'sent' };
-    if (existing !== -1) {
-      book[key].invoices[existing] = entry; // refresh url / status in case it changed
-    } else {
-      book[key].invoices.unshift(entry);
-    }
-  }
-  localStorage.setItem('addressBook', JSON.stringify(book));
-}
-function renderAddressBook() {
-  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
-  const query = (document.getElementById('abSearch')?.value || '').toLowerCase();
-  let customers = Object.values(book).filter(c =>
-    (c.name || '').toLowerCase().includes(query) ||
-    (c.email || '').toLowerCase().includes(query) ||
-    (c.squareProfile?.company || '').toLowerCase().includes(query)
-  );
-  customers.sort((a, b) => (a.stopNum ?? 999) - (b.stopNum ?? 999));
-  const abEmpty = document.getElementById('abEmpty');
-  const abGrid  = document.getElementById('abGrid');
-  if (!abEmpty || !abGrid) return;
-  if (!customers.length) { abEmpty.style.display = ''; abGrid.style.display = 'none'; return; }
-  abEmpty.style.display = 'none';
-  abGrid.style.display  = '';
 
-  abGrid.innerHTML = customers.map(c => {
-    const bookKey     = c.squareCustomerId || `name:${c.name}`;
-    const cKeyJson    = JSON.stringify(bookKey);
-    const effectiveSqId = c.squareCustomerIdOverride || c.squareCustomerId || '';
-    const hasOverride   = !!c.squareCustomerIdOverride && c.squareCustomerIdOverride !== c.squareCustomerId;
-    const sq = c.squareProfile || {};
-    const syncedAt = sq.fetchedAt ? `Synced ${new Date(sq.fetchedAt).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}` : 'Not synced';
+  return jsonRes({ results });
+}
 
-    // Square profile block (shown when synced)
-    const squareName = ((sq.given_name || '') + ' ' + (sq.family_name || '')).trim();
-    const addrParts = sq.address ? [sq.address.address_line_1, sq.address.address_line_2, sq.address.city, sq.address.state, sq.address.postal_code].filter(Boolean) : [];
-    const profileHtml = sq.fetchedAt ? `
-      <div class="ab-profile-row">
-        <span class="ab-profile-label">Name on file</span>
-        <span class="ab-profile-val">${esc(squareName || '—')}</span>
-      </div>
-      ${sq.email_address ? `<div class="ab-profile-row"><span class="ab-profile-label">Email</span><span class="ab-profile-val" style="word-break:break-all">${esc(sq.email_address)}</span></div>` : ''}
-      ${sq.phone_number ? `<div class="ab-profile-row"><span class="ab-profile-label">Phone</span><span class="ab-profile-val">${esc(sq.phone_number)}</span></div>` : ''}
-      ${addrParts.length ? `<div class="ab-profile-row"><span class="ab-profile-label">Address</span><span class="ab-profile-val">${esc(addrParts.join(', '))}</span></div>` : ''}
-      <div class="ab-profile-row">
-        <span class="ab-profile-label">Card on file</span>
-        <span class="ab-profile-val" style="${sq.has_card_on_file ? 'color:#16a34a;font-weight:600' : 'color:#dc2626'}">${sq.has_card_on_file ? 'Yes' : 'No'}</span>
-      </div>
-    ` : '';
+async function handleCreateDrafts(env, request) {
+  let body;
+  try { body = await request.json(); } catch { return errRes('Invalid JSON body'); }
+  const { orders } = body;
+  if (!Array.isArray(orders) || !orders.length) return errRes('orders array required');
 
-    return `
-    <div class="ab-card">
-      <div class="ab-card-header">
-        <div>
-          <div class="ab-card-name">${esc(c.name)}</div>
-          ${sq.company_name && sq.company_name !== c.name ? `<div style="font-size:11px;color:#6b7280;margin-top:1px">${esc(sq.company_name)}</div>` : ''}
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <button onclick="syncSquareProfile(${cKeyJson})" class="ab-sync-btn" title="${syncedAt}">↺ Sync</button>
-          <button onclick="clearCustomerHistory(${cKeyJson})" title="Clear invoice history" style="background:none;border:none;cursor:pointer;font-size:13px;color:#9ca3af;padding:2px 4px;line-height:1" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">✕</button>
-        </div>
-      </div>
-      ${profileHtml}
-      <div class="ab-card-body">
-        <div class="ab-field" style="flex-direction:column;align-items:flex-start;gap:4px">
-          <span class="ab-label">Square ID${hasOverride ? '<span class="ab-override-badge">OVERRIDE</span>' : ''}</span>
-          <div style="display:flex;gap:6px;width:100%;align-items:center" id="ab-sqid-view-${esc(bookKey)}">
-            <code class="ab-sqid" style="flex:1">${esc(effectiveSqId || '—')}</code>
-            <button class="ab-copy" onclick="copyText('${esc(effectiveSqId)}')">Copy</button>
-            <button class="ab-copy" onclick="startEditSquareId(${cKeyJson})">Edit</button>
-          </div>
-          <div style="display:none;gap:6px;width:100%;align-items:center" id="ab-sqid-edit-${esc(bookKey)}">
-            <input class="ab-sqid-edit" id="ab-sqid-input-${esc(bookKey)}" value="${esc(effectiveSqId)}" placeholder="Square Customer ID" />
-            <button class="ab-copy" style="color:#16a34a;font-weight:700" onclick="saveSquareIdOverride(${cKeyJson})">Save</button>
-            <button class="ab-copy" onclick="cancelEditSquareId(${cKeyJson})">Cancel</button>
-          </div>
-          ${hasOverride ? `<div style="font-size:10px;color:#7c3aed">Overrides AppSheet (original: ${esc(c.squareCustomerId || '—')})</div>` : ''}
-        </div>
-        ${!sq.fetchedAt && c.email ? `<div class="ab-field"><span class="ab-label">Email</span><span style="font-size:13px;word-break:break-all">${esc(c.email)}</span></div>` : ''}
-        <div class="ab-field"><span class="ab-label">Bring invoice</span><span style="font-size:13px">${c.bringInvoice ? '📄 Yes — bring printed invoice' : 'No'}</span></div>
-        <div style="font-size:10px;color:#9ca3af;margin-top:2px">${esc(syncedAt)}</div>
-      </div>
-      <div class="ab-invoices">
-        <div class="ab-inv-label">Invoice history${c.invoices?.length ? ` (${c.invoices.length})` : ''}</div>
-        ${c.invoices?.length ? c.invoices.slice(0,20).map(inv => `
-          <div class="ab-inv-row">
-            <span>${esc(inv.date || '')}</span>
-            <span style="font-weight:600">$${(inv.total||0).toFixed(2)}</span>
-            <span style="color:#6b7280">${esc(inv.invoiceNumber || '—')}</span>
-            <span>${inv.squareInvoiceUrl ? `<a href="${esc(inv.squareInvoiceUrl)}" target="_blank" style="color:#3b82f6;font-size:11px">↗ View</a>` : ''}</span>
-          </div>
-        `).join('') : '<div style="font-size:12px;color:#9ca3af;padding:4px 0">No invoices recorded yet — they appear here after you run invoices from the dashboard.</div>'}
-      </div>
-    </div>
-  `; }).join('');
-}
-function startEditSquareId(key) {
-  document.getElementById(`ab-sqid-view-${key}`)?.style && (document.getElementById(`ab-sqid-view-${key}`).style.display = 'none');
-  const edit = document.getElementById(`ab-sqid-edit-${key}`);
-  if (edit) { edit.style.display = 'flex'; edit.querySelector('input')?.focus(); }
-}
-function cancelEditSquareId(key) {
-  document.getElementById(`ab-sqid-view-${key}`)?.style && (document.getElementById(`ab-sqid-view-${key}`).style.display = 'flex');
-  const edit = document.getElementById(`ab-sqid-edit-${key}`);
-  if (edit) edit.style.display = 'none';
-}
-function saveSquareIdOverride(key) {
-  const input = document.getElementById(`ab-sqid-input-${key}`);
-  if (!input) return;
-  const newId = input.value.trim();
-  const book  = JSON.parse(localStorage.getItem('addressBook') || '{}');
-  if (!book[key]) return;
-  book[key].squareCustomerIdOverride = newId || null;
-  // Clear cached Square profile so it gets re-fetched with the new ID
-  if (newId !== (book[key].squareCustomerId || '')) book[key].squareProfile = null;
-  localStorage.setItem('addressBook', JSON.stringify(book));
-  renderAddressBook();
-  showToast(newId ? `Square ID override saved — will be used for all future invoices` : 'Override cleared', 'green');
-}
-async function syncSquareProfile(key) {
-  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
-  if (!book[key]) return;
-  const sqId = book[key].squareCustomerIdOverride || book[key].squareCustomerId;
-  if (!sqId) { showToast('No Square ID to sync — set one first', 'red'); return; }
-  showToast('Syncing from Square…', '');
-  try {
-    const res  = await fetch(`${WORKER_URL}/square-customer?id=${encodeURIComponent(sqId)}`);
-    const data = await res.json();
-    if (!data.customer) { showToast('Square customer not found', 'red'); return; }
-    const c = data.customer;
-    book[key].squareProfile = {
-      given_name:    c.given_name    || '',
-      family_name:   c.family_name   || '',
-      company_name:  c.company_name  || '',
-      email_address: c.email_address || '',
-      phone_number:  c.phone_number  || '',
-      address:       c.address       || null,
-      reference_id:  c.reference_id  || '',
-      has_card_on_file: data.has_card_on_file ?? false,
-      fetchedAt:     new Date().toISOString(),
-    };
-    // Also update email from Square if present
-    if (c.email_address) book[key].email = c.email_address;
-    localStorage.setItem('addressBook', JSON.stringify(book));
-    renderAddressBook();
-    showToast('Square profile synced ✓', 'green');
-  } catch (e) {
-    showToast('Sync failed: ' + e.message, 'red');
-  }
-}
-function clearCustomerHistory(key) {
-  const book = JSON.parse(localStorage.getItem('addressBook') || '{}');
-  if (!book[key]) return;
-  book[key].invoices = [];
-  localStorage.setItem('addressBook', JSON.stringify(book));
-  renderAddressBook();
-  showToast('Invoice history cleared — will rebuild on next load');
-}
-function clearAddressBook() {
-  if (!confirm('Clear the entire address book? This cannot be undone.')) return;
-  localStorage.removeItem('addressBook');
-  renderAddressBook();
-  showToast('Address book cleared');
-}
-function copyText(text) {
-  navigator.clipboard.writeText(text).then(() => showToast('Copied!', 'green'));
-}
-// ── Date helpers ────────────────────────────────────────────────────────────────
-function getDefaultDate() {
-  const pref = localStorage.getItem('defaultDate') || 'today';
-  const d = new Date();
-  if (pref === 'today') return d;
-  if (pref === 'tomorrow') { d.setDate(d.getDate() + 1); return d; }
-  const diff = (4 - d.getDay() + 7) % 7 || 7;
-  d.setDate(d.getDate() + diff);
-  return d;
-}
-function toInputFmt(d)   { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function toDisplayFmt(iso) { const [y,m,d] = iso.split('-'); return `${m}/${d}/${y}`; }
-function toSectionLabel(iso) {
-  const [y,m,d] = iso.split('-').map(Number);
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const dow = days[new Date(y, m-1, d).getDay()];
-  return `${dow} ${m}/${d}/${y} Orders`;
-}
-function shiftDate(days) {
-  const [y,m,d] = picker.value.split('-').map(Number);
-  const dt = new Date(y, m-1, d);
-  dt.setDate(dt.getDate() + days);
-  picker.value = toInputFmt(dt);
-  document.getElementById('btnLoad').click();
-}
-const picker = document.getElementById('datePicker');
-picker.value = toInputFmt(getDefaultDate());
-// ── Tab switching ───────────────────────────────────────────────────────────────
-const TABS = ['orders','addressbook','outstanding','settings','notes','features','rules'];
-function switchTab(name) {
-  TABS.forEach(t => { document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none'; });
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
-  const toolbar = document.getElementById('toolbar');
-  if (toolbar.dataset.loaded === '1') toolbar.style.display = name === 'orders' ? '' : 'none';
-  if (name === 'addressbook') renderAddressBook();
-  if (name === 'outstanding') loadOutstanding();
-}
-document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-document.getElementById('btnRefresh').addEventListener('click', () => document.getElementById('btnLoad').click());
-document.getElementById('btnSaveSettings').addEventListener('click', saveSettings);
-// ── DOM refs ────────────────────────────────────────────────────────────────────
-const toolbar      = document.getElementById('toolbar');
-const statText     = document.getElementById('statText');
-const runStatus    = document.getElementById('runStatus');
-const runDot       = document.getElementById('runDot');
-const runStatusTxt = document.getElementById('runStatusText');
-const btnDraft     = document.getElementById('btnDraft');
-const btnSend      = document.getElementById('btnSend');
-const stateEmpty   = document.getElementById('stateEmpty');
-const stateLoading = document.getElementById('stateLoading');
-const stateOrders  = document.getElementById('stateOrders');
-// ── Toast ───────────────────────────────────────────────────────────────────────
-let toastTimer;
-function showToast(msg, type = '') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className   = 'toast show' + (type ? ' ' + type : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3500);
-}
-// ── Modal ───────────────────────────────────────────────────────────────────────
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-// ── Escape HTML ─────────────────────────────────────────────────────────────────
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-// ── Selection helpers ───────────────────────────────────────────────────────────
-function selectedOrders() {
-  return state.orders.filter(o => { const cb = document.getElementById(`cb-${o.id}`); return cb && cb.checked; });
-}
-function selectAllPending()  { state.orders.filter(o => o.status === 'pending'  && !o.squareConflict).forEach(o => setChecked(o.id, true));  updateToolbar(); }
-function selectAllDrafted()  { state.orders.filter(o => o.status === 'drafted').forEach(o => setChecked(o.id, true));  updateToolbar(); }
-function deselectAll()       { state.orders.forEach(o => setChecked(o.id, false)); updateToolbar(); }
-function setChecked(id, val) {
-  const cb   = document.getElementById(`cb-${id}`);
-  const card = document.getElementById(`card-${id}`);
-  if (cb) cb.checked = val;
-  if (card) card.classList.toggle('selected', val);
-}
-// ── Month-end mode ──────────────────────────────────────────────────────────────
-function toggleMonthEnd() {
-  monthEndMode = !monthEndMode;
-  document.getElementById('btnMonthEnd').classList.toggle('active', monthEndMode);
-  document.getElementById('btnMonthEnd').textContent = monthEndMode ? '📅 Month-end ON' : '📅 Month-end mode';
-  showToast(monthEndMode ? 'Month-end mode on — reload orders to include those customers' : 'Month-end mode off', monthEndMode ? '' : '');
-}
-// ── Status dot ──────────────────────────────────────────────────────────────────
-function setStatus(msg, color) {
-  if (!msg) { runStatus.classList.remove('visible'); return; }
-  runStatus.classList.add('visible');
-  runDot.className = `run-dot ${color}`;
-  runStatusTxt.textContent = msg;
-}
-// ── Toolbar stats ───────────────────────────────────────────────────────────────
-function updateToolbar() {
-  const sel   = selectedOrders();
-  const grand = sel.reduce((s,o) => s + (o.total||0), 0);
-  const pending  = state.orders.filter(o => o.status === 'pending').length;
-  const drafted  = state.orders.filter(o => o.status === 'drafted').length;
-  const sent     = state.orders.filter(o => o.status === 'sent').length;
-  statText.innerHTML = `<strong>${sel.length}</strong> selected &nbsp;·&nbsp; $${grand.toFixed(2)} &nbsp;·&nbsp; <span style="color:#6b7280">${pending} pending · ${drafted} drafted · ${sent} sent</span>`;
-  btnDraft.style.display = sel.some(o => o.status === 'pending')  ? '' : 'none';
-  btnSend.style.display  = sel.some(o => o.status === 'drafted') ? '' : 'none';
-}
-// ── Recompute card line totals ──────────────────────────────────────────────────
-function recomputeCard(orderId) {
-  const order = state.orders.find(o => o.id === orderId);
-  if (!order) return;
-  let sub = 0;
-  order.lineItems.forEach((li, i) => {
-    const qEl = document.getElementById(`qty-${orderId}-${i}`);
-    const pEl = document.getElementById(`price-${orderId}-${i}`);
-    const tEl = document.getElementById(`liTotal-${orderId}-${i}`);
-    if (!qEl) return;
-    li.qty = parseFloat(qEl.value) || 0;
-    li.unitPrice = parseFloat(pEl.value) || 0;
-    li.total = Math.round(li.qty * li.unitPrice * 100) / 100;
-    if (tEl) tEl.textContent = `$${li.total.toFixed(2)}`;
-    sub += li.total;
-  });
-  order.subtotal = Math.round(sub * 100) / 100;
-  order.total    = Math.round((order.subtotal + order.deliveryFee) * 100) / 100;
-  ['sub','tot','hdrTotal'].forEach(prefix => {
-    const el = document.getElementById(`${prefix}-${orderId}`);
-    if (el) el.textContent = `$${(prefix === 'sub' ? order.subtotal : order.total).toFixed(2)}`;
-  });
-  updateToolbar();
-}
-// ── WoW diff panel ──────────────────────────────────────────────────────────────
-function toggleWow(id) {
-  const body = document.getElementById(`wow-body-${id}`);
-  const btn  = document.getElementById(`wow-btn-${id}`);
-  if (!body) return;
-  const closed = body.classList.toggle('closed');
-  if (btn) btn.textContent = (closed ? '▸' : '▾') + ' vs last week';
-}
-function buildWowHtml(order) {
-  const wow = order.wow;
-  if (!wow || !getFeature('showWow')) return '';
-  const badgeHtml = wow.status === 'new'
-    ? `<span class="badge badge-wow-new" title="This customer did not have an order last week — no week-over-week comparison available">🆕 First order this week</span>`
-    : wow.status === 'changed'
-      ? `<span class="badge badge-wow-changed">⚠ Changed ${wow.deltaTotal > 0 ? '+' : ''}$${wow.deltaTotal.toFixed(2)}</span>`
-      : `<span class="badge badge-wow-same">✓ Same as last week</span>`;
-  if (wow.status === 'new') return badgeHtml;
-  const rows = wow.items.map(item => {
-    const cls  = `wow-${item.change}`;
-    const lastCol = item.lastQty !== null ? `${item.lastQty}× ($${item.lastTotal?.toFixed(2)})` : '—';
-    let thisColor = '';
-    if (item.change === 'new')     thisColor = '#16a34a';
-    if (item.change === 'dropped') thisColor = '#dc2626';
-    if (item.change === 'changed') {
-      thisColor = (item.thisTotal ?? 0) > (item.lastTotal ?? 0) ? '#16a34a' : '#dc2626';
-    }
-    const thisStyle = thisColor ? ` style="color:${thisColor};font-weight:700"` : '';
-    const thisCol = item.thisQty !== null
-      ? `<span${thisStyle}>${item.thisQty}× ($${item.thisTotal?.toFixed(2)})</span>` : '—';
-    return `<tr class="${cls}"><td class="wow-name">${esc(item.name)}</td><td>${thisCol}</td><td style="color:#111">${lastCol}</td></tr>`;
-  }).join('');
-  const deltaClass = wow.deltaTotal > 0 ? 'pos' : wow.deltaTotal < 0 ? 'neg' : '';
-  return `${badgeHtml}
-    <div class="wow-section">
-      <button class="wow-toggle" id="wow-btn-${order.id}" onclick="toggleWow('${order.id}')">▸ vs last week</button>
-      <div class="wow-body closed" id="wow-body-${order.id}">
-        <table class="wow-table">
-          <thead><tr><th>Product</th><th style="text-align:right">This week</th><th style="text-align:right">Last week</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        ${wow.deltaTotal !== 0 ? `<div class="wow-delta ${deltaClass}">Net change: ${wow.deltaTotal > 0 ? '+' : ''}$${wow.deltaTotal.toFixed(2)}</div>` : ''}
-      </div>
-    </div>`;
-}
-// ── Sardilli PO check ───────────────────────────────────────────────────────────
-function getSardelliPO(order) {
-  if (!order.customerName.toLowerCase().includes('sardilli')) return null;
-  try {
-    const po = JSON.parse(localStorage.getItem('sardilli-po-latest') || '{}');
-    if (!po.po_number) return null;
-    const targetDate = (order.invoiceTitle || '').split(' ')[0];
-    if (po.delivery_date && po.delivery_date !== targetDate)
-      return { warning: `⚠ Cached PO #${po.po_number} is for ${po.delivery_date}, not ${targetDate}.` };
-    const poTotal    = parseFloat(po.po_total || 0);
-    const orderTotal = order.subtotal;
-    if (Math.abs(poTotal - orderTotal) > 0.02)
-      return { warning: `⚠ PO #${po.po_number} total ($${poTotal.toFixed(2)}) ≠ order ($${orderTotal.toFixed(2)}). Resolve before invoicing.`, poNumber: po.po_number };
-    return { poNumber: po.po_number, matched: true };
-  } catch { return null; }
-}
-// ── Render a single table row ───────────────────────────────────────────────────
-function renderRow(order) {
-  const isSent      = order.status === 'sent';
-  const isDrafted   = order.status === 'drafted';
-  const isError     = order.status === 'error';
-  const isDuplicate = order.status === 'duplicate';
-  const isPending   = order.status === 'pending';
-  const isPickup    = order.fulfillmentType === 'pickup';
-  const ro          = isSent ? 'readonly disabled' : '';
-  const autoExpand  = getFeature('autoExpand');
-
-  let rowClass = 'order-row';
-  if (isDrafted)   rowClass += ' status-drafted';
-  if (isSent)      rowClass += ' status-sent';
-  if (isError)     rowClass += ' status-error';
-  if (isDuplicate) rowClass += ' status-duplicate';
-
-  // ── Customer cell: Name → Square ID → "Sent to: email" ──
-  // Conflict icon stays inline with name; bring-invoice emoji removed from name cell
-  const conflictIcon = order.squareConflict
-    ? ` <span title="${esc(order.squareConflict)}" style="color:#dc2626">⚠</span>` : '';
-  const sqIdInCell = (getFeature('showSqId') && order.squareCustomerId)
-    ? `<div style="font-size:11px;color:#374151;margin-top:3px"><span style="font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.03em;font-size:10px">Square ID:</span> <span style="font-family:monospace">${esc(order.squareCustomerId)}</span></div>`
-    : '';
-  const sentToLine = order.customerEmail
-    ? `<div class="tbl-email"><span style="font-size:10px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.03em">Sent to:</span> ${esc(order.customerEmail)}</div>`
-    : `<div class="tbl-email no-email">⚠ No email on file</div>`;
-  const pickupBadge = isPickup ? ` <span style="font-size:10px;font-weight:700;color:#7c3aed;background:#ede9fe;padding:1px 5px;border-radius:4px;vertical-align:middle">PICKUP</span>` : '';
-  const isCancelled = (order.appsheetStatus || '').toLowerCase().includes('cancel');
-  const statusBadge = order.appsheetStatus
-    ? (() => {
-        const s = order.appsheetStatus;
-        const [bg, fg] = isCancelled ? ['#fee2e2','#b91c1c'] : ['#f3f4f6','#374151'];
-        return `<span style="font-size:10px;font-weight:700;color:${fg};background:${bg};padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:middle">${esc(s).toUpperCase()}</span>`;
-      })()
-    : '';
-  const nameCell = `<div class="tbl-name">${esc(order.customerName)}${conflictIcon}${pickupBadge}${statusBadge}</div>${sqIdInCell}${sentToLine}`;
-
-  // Amount cell
-  const amountCell = `<span class="tbl-amount" id="hdrTotal-${order.id}">$${order.total.toFixed(2)}</span>`;
-  // Stop # cell
-  const stopCell = order.stopNum !== null ? order.stopNum : '—';
-  // Invoice # cell
-  let invSentCell;
-  if ((isDrafted || isSent) && order.squareInvoiceNumber) {
-    // Use Square dashboard URL for edit access; fall back to public URL
-    const dashUrl = order.squareInvoiceId
-      ? `https://squareup.com/dashboard/invoices/${order.squareInvoiceId}${isDrafted ? '/edit' : ''}`
-      : (order.squareInvoiceUrl || null);
-    const link = dashUrl
-      ? `<a href="${esc(dashUrl)}" target="_blank" onclick="event.stopPropagation()" title="${isDrafted ? 'Edit draft in Square dashboard' : 'View invoice in Square dashboard'}">${esc(order.squareInvoiceNumber)}</a>`
-      : esc(order.squareInvoiceNumber);
-    invSentCell = `<span class="tbl-inv-num">${link}</span>`;
-  } else if (isDrafted) {
-    invSentCell = '<span style="color:#f97316;font-size:12px;font-weight:600">Draft</span>';
-  } else if (isSent) {
-    invSentCell = '<span style="color:#16a34a;font-size:12px;font-weight:600">✓</span>';
-  } else {
-    invSentCell = '<span style="color:#d1d5db">—</span>';
-  }
-  // Invoice Paid cell
-  const sqStatus = order.squareStatus || '';
-  let invPaidCell;
-  if (sqStatus === 'PAID') {
-    invPaidCell = '<span class="tbl-paid paid">✓ Paid</span>';
-  } else if (sqStatus === 'PARTIALLY_PAID') {
-    invPaidCell = '<span class="tbl-paid partial">Partial</span>';
-  } else if (isSent || isDrafted) {
-    invPaidCell = '<span class="tbl-paid unpaid">Unpaid</span>';
-  } else {
-    invPaidCell = '<span style="color:#d1d5db">—</span>';
-  }
-  // Order Fulfilled cell — only show if the order is actually sent/fulfilled
-  const fulfilledCell = (isSent && order.fulfillmentDate) ? esc(order.fulfillmentDate) : '';
-  // Line items for expanded detail
-  const liRows = order.lineItems.map((li, i) => {
-    const liStatus    = (li.status || '').toLowerCase();
-    const isPackedOut = liStatus.includes('packed') || li.status === 'Y';
-    const nameColor   = li.status ? (isPackedOut ? '#16a34a' : '#ea580c') : '';
-    const nameStyle   = nameColor ? ` style="color:${nameColor};font-weight:600"` : '';
-    return `
-    <div class="line-item">
-      <div class="li-name"${nameStyle}>${esc(li.name)}</div>
-      <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"                  ${ro} oninput="recomputeCard('${order.id}')">
-      <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}" ${ro} oninput="recomputeCard('${order.id}')">
-      <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
-    </div>`;
-  }).join('');
-  const hasDfee   = order.deliveryFee > 0;
-  const invLink = (isDrafted || isSent) && order.squareInvoiceUrl
-    ? `<a class="inv-link" href="${esc(order.squareInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()" title="${isSent ? 'Open in Square to resend, mark paid, or manage' : 'View draft in Square'}">${isSent ? '↗ Manage in Square' : '↗ View in Square'}</a>` : '';
-  const dupLink = isDuplicate && order.existingInvoiceUrl
-    ? `<a class="inv-link" href="${esc(order.existingInvoiceUrl)}" target="_blank" onclick="event.stopPropagation()">↗ View existing</a>` : '';
-  const sardilli = getSardelliPO(order);
-  const sardinWarning = sardilli && sardilli.warning ? `<div class="conflict-bar">🐟 ${esc(sardilli.warning)}</div>` : '';
-  const wowHtml = buildWowHtml(order);
-  const invTitleLine = getFeature('showInvTitle')
-    ? `<div style="font-size:12px;color:#111;padding:2px 0 0"><span style="font-weight:700;color:#374151">Title:</span> ${esc(order.invoiceTitle || '—')}</div>`
-    : '';
-  const detailDisplay = autoExpand ? '' : 'display:none';
-  const mainRow = `
-    <tr class="${rowClass}" id="row-${order.id}" onclick="toggleExpand('${order.id}')">
-      <td onclick="event.stopPropagation()" style="width:32px;text-align:center">
-        <input class="card-checkbox" type="checkbox" id="cb-${order.id}"
-               ${!order.squareConflict && (isPending || isDrafted) && !isCancelled ? 'checked' : ''}
-               ${isSent || isCancelled ? 'disabled' : ''}
-               onclick="toggleCard('${order.id}')">
-      </td>
-      <td>${nameCell}</td>
-      <td>${amountCell}</td>
-      <td class="tbl-center">${invSentCell}</td>
-      <td class="tbl-center">${invPaidCell}</td>
-      <td class="tbl-center" style="font-size:12px;color:#6b7280">${fulfilledCell}</td>
-      <td class="tbl-expand-btn" id="expbtn-${order.id}">▸</td>
-    </tr>`;
-  const detailRow = `
-    <tr class="order-detail-row" id="body-${order.id}" style="${detailDisplay}">
-      <td colspan="7">
-        ${order.squareConflict ? `<div class="conflict-bar">⚠️ ${esc(order.squareConflict)}</div>` : ''}
-        ${sardinWarning}
-        ${isError ? `<div class="card-error" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-  <span>⛔ ${esc(order.error || 'Unknown error')}</span>
-  <button class="btn btn-sm btn-ghost" style="font-size:11px;padding:3px 8px;flex-shrink:0" onclick="event.stopPropagation();retryOrder('${order.id}')">↺ Retry</button>
-</div>` : ''}
-        ${isDuplicate ? `<div class="conflict-bar">⚠ ${esc(order.error || '')} ${dupLink}</div>` : ''}
-        <div class="line-items" style="padding:10px 16px">
-          ${invTitleLine ? `<div style="font-size:12px;color:#374151;padding:4px 0 6px">${invTitleLine}</div>` : ''}
-          <div class="line-item" style="font-size:11px;font-weight:700;color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:4px">
-            <div>PRODUCT</div><div style="text-align:right">QTY</div><div style="text-align:right">UNIT $</div><div style="text-align:right">TOTAL</div>
-          </div>
-          ${liRows}
-        </div>
-        <div class="card-footer">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            ${invLink}${dupLink}
-            ${isSent && order.sentAt ? (() => {
-              const d = new Date(order.sentAt);
-              return `<span style="font-size:11px;color:#6b7280">Sent ${d.toLocaleDateString([],{month:'short',day:'numeric'})} at ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`;
-            })() : ''}
-          </div>
-          <div class="card-footer-totals">
-            <span>Subtotal: <strong id="sub-${order.id}">$${order.subtotal.toFixed(2)}</strong></span>
-            <span id="dfee-${order.id}" style="${hasDfee ? '' : 'display:none'}">Delivery fee: <strong>$5.00</strong></span>
-            ${!isSent ? `<button id="dfeebtn-${order.id}" class="btn btn-sm ${hasDfee ? 'btn-ghost' : ''}" style="font-size:11px;padding:3px 8px;align-self:flex-end;${hasDfee ? '' : 'background:#16a34a;color:#fff;border-color:#16a34a'}" onclick="event.stopPropagation();toggleDeliveryFee('${order.id}')">${hasDfee ? '✕ Remove fee' : '＋ Add $5 fee'}</button>` : ''}
-            <span>Total: <strong id="tot-${order.id}">$${order.total.toFixed(2)}</strong></span>
-          </div>
-        </div>
-        ${wowHtml}
-      </td>
-    </tr>`;
-  return mainRow + detailRow;
-}
-function isSectionCollapsed(id) {
-  const s = JSON.parse(localStorage.getItem('sectionCollapsed') || '{}');
-  return !!s[id];
-}
-function toggleSection(id) {
-  const body    = document.getElementById('sec-body-' + id);
-  const chevron = document.getElementById('sec-chev-' + id);
-  if (!body) return;
-  const collapsed = body.classList.toggle('collapsed');
-  if (chevron) chevron.classList.toggle('collapsed', collapsed);
-  const s = JSON.parse(localStorage.getItem('sectionCollapsed') || '{}');
-  s[id] = collapsed;
-  localStorage.setItem('sectionCollapsed', JSON.stringify(s));
-}
-function initSectionChevrons() {
-  ['pending','upcoming','drafts','sent'].forEach(id => {
-    const chev = document.getElementById('sec-chev-' + id);
-    if (chev && isSectionCollapsed(id)) chev.classList.add('collapsed');
-  });
-}
-function toggleExpand(id) {
-  const detailRow = document.getElementById('body-' + id);
-  const expandBtn = document.getElementById('expbtn-' + id);
-  if (!detailRow) return;
-  const isHidden = detailRow.style.display === 'none' || detailRow.style.display === '';
-  detailRow.style.display = isHidden ? 'table-row' : 'none';
-  if (expandBtn) expandBtn.textContent = isHidden ? '▾' : '▸';
-}
-function toggleCard(id) {
-  const card = document.getElementById(`card-${id}`);
-  const cb   = document.getElementById(`cb-${id}`);
-  if (!card || !cb) return;
-  card.classList.toggle('selected', cb.checked);
-  updateToolbar();
-}
-function patchCard(order) {
-  const el = document.getElementById(`card-${order.id}`);
-  if (!el) return;
-  const wasClosed = document.getElementById(`body-${order.id}`)?.classList.contains('closed');
-  const tmp = document.createElement('div');
-  tmp.innerHTML = renderCard(order);
-  el.replaceWith(tmp.firstElementChild);
-  if (wasClosed) {
-    const body = document.getElementById(`body-${order.id}`);
-    const btn  = document.getElementById(`toggle-${order.id}`);
-    if (body) body.classList.add('closed');
-    if (btn)  btn.textContent = '▸ Show items';
-  }
-}
-// ── Render full orders view ─────────────────────────────────────────────────────
-function renderOrders() {
-  stateEmpty.style.display   = 'none';
-  stateLoading.style.display = 'none';
-  stateOrders.style.display  = '';
-  let html = '';
-  const grand = state.orders.reduce((s,o) => s + o.total, 0);
-
-  // ── Non-collapsible date header ──────────────────────────────────────────────
-  html += `<div class="date-section-hdr">
-    <span class="section-label">${toSectionLabel(picker.value)}</span>
-    <span class="section-count">${state.orders.length} order${state.orders.length !== 1 ? 's' : ''} · $${grand.toFixed(2)}</span>
-    <div class="section-spacer"></div>
-    <div class="section-actions">
-      <button class="btn btn-sm btn-ghost" onclick="selectAllPending()">Select pending</button>
-      <button class="btn btn-sm btn-ghost" onclick="selectAllDrafted()">Select drafts</button>
-      <button class="btn btn-sm btn-ghost" onclick="deselectAll()">Deselect all</button>
-    </div>
-  </div>`;
-
-  // Sort by ascending stop number; nulls at bottom
-  const allSorted = [...state.orders].sort((a, b) => {
+  const sorted = [...orders].sort((a, b) => {
     if (a.stopNum === null && b.stopNum === null) return 0;
     if (a.stopNum === null) return 1;
     if (b.stopNum === null) return -1;
-    return a.stopNum - b.stopNum;
+    return b.stopNum - a.stopNum;
   });
 
-  const tableHeader = `<table class="orders-table" style="border-radius:0;box-shadow:none"><thead><tr>
-    <th style="width:32px"></th>
-    <th>Customer</th>
-    <th>Amount</th>
-    <th class="th-center">Invoice #</th>
-    <th class="th-center">Invoice Paid</th>
-    <th class="th-center">Order Fulfilled</th>
-    <th style="width:28px"></th>
-  </tr></thead><tbody>`;
+  const results = [];
 
-  const isCancelledOrder = o => (o.appsheetStatus || '').toLowerCase().includes('cancel');
-
-  const groups = [
-    { id: 'grp-sent',    label: 'Sent',    color: '#16a34a', statuses: ['sent'] },
-    { id: 'grp-drafted', label: 'Drafted', color: '#f97316', statuses: ['drafted'] },
-    { id: 'grp-pending', label: 'Pending', color: '#dc2626', statuses: ['pending','error','duplicate'] },
-  ];
-
-  if (!state.orders.length) {
-    html += `<div style="padding:20px;text-align:center;color:#9ca3af;font-size:14px;background:#fff;border-radius:10px;border:1px dashed #e5e7eb">No orders for this date.</div>`;
-  } else {
-    html += `<div class="orders-groups-card">`;
-    for (const [i, group] of groups.entries()) {
-      // Cancelled orders are shown in their own section at the bottom — exclude from Pending
-      const grpOrders = allSorted.filter(o => group.statuses.includes(o.status) && !isCancelledOrder(o));
-      const grpTotal  = grpOrders.reduce((s,o) => s + o.total, 0);
-      const collapsed = isSectionCollapsed(group.id);
-      const borderTop = i > 0 ? 'border-top:1px solid #e5e7eb;' : '';
-      html += `<div class="sub-section-hdr" style="${borderTop}" onclick="toggleSection('${group.id}')">
-        <span class="section-chevron${collapsed ? ' collapsed' : ''}" id="sec-chev-${group.id}">▾</span>
-        <span class="sub-section-label" style="color:${group.color}">${group.label}</span>
-        <span class="sub-section-count">${grpOrders.length} order${grpOrders.length !== 1 ? 's' : ''} · $${grpTotal.toFixed(2)}</span>
-      </div>
-      <div class="section-body${collapsed ? ' collapsed' : ''}" id="sec-body-${group.id}">`;
-      if (!grpOrders.length) {
-        html += `<div style="padding:10px 14px;font-size:13px;color:#9ca3af">No ${group.label.toLowerCase()} orders.</div>`;
-      } else {
-        html += tableHeader;
-        grpOrders.forEach(o => { html += renderRow(o); });
-        html += `</tbody></table>`;
-      }
-      html += `</div>`; // close section-body
+  for (const order of sorted) {
+    // Skip orders the customer has cancelled — do not create a Square draft
+    if ((order.appsheetStatus || '').toLowerCase() === 'customer cancelled order') {
+      results.push({ ...order, status: 'error', error: 'Customer cancelled order — draft not created' });
+      continue;
     }
-    html += `</div>`; // close orders-groups-card
-  }
 
-  // ── Section: Upcoming ───────────────────────────────────────────────────────
-  if (getFeature('showNotInToday') && (state.notInToday.length || state.skipped.length)) {
-    const upcomingCount = state.notInToday.length + state.skipped.length;
-    html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('upcoming')">
-      <span class="section-chevron" id="sec-chev-upcoming">▾</span>
-      <span class="section-label">Upcoming</span>
-      <span class="section-count">${upcomingCount} accounts</span>
-    </div>
-    <div class="section-body${isSectionCollapsed('upcoming') ? ' collapsed' : ''}" id="sec-body-upcoming">`;
-    if (state.notInToday.length) {
-      html += `<div class="mini-list">`;
-      state.notInToday.forEach(c => {
-        const items = c.items.map(i => `${i.qty}× ${i.name}`).join(', ');
-        html += `<div class="mini-card">
-          <div class="mini-card-name">${esc(c.customerName)} <span style="color:#9ca3af;font-size:12px;font-weight:400">— not in today's run</span></div>
-          <div class="mini-card-detail">Last week: $${(c.lastTotal||0).toFixed(2)}</div>
-          <div class="mini-card-items">${esc(items)}</div>
-        </div>`;
+    if (!order.squareCustomerId) {
+      results.push({ ...order, status: 'error', error: 'No Square Customer ID — skipped' });
+      continue;
+    }
+
+    try {
+      const [dateStr] = (order.invoiceTitle || '').split(' ');
+      const [m2, d2, y2] = (dateStr || '').split('/');
+      const dueDate = `${y2}-${(m2||'01').padStart(2,'0')}-${(d2||'01').padStart(2,'0')}`;
+
+      // Duplicate pre-check — checks order metadata so that restaurant-group
+      // siblings sharing a Square Customer ID don't block each other.
+      try {
+        const existing = await squareReq(env, 'GET', `/v2/invoices?location_id=${env.SQUARE_LOCATION_ID}&customer_id=${order.squareCustomerId}`);
+        let dupe = null;
+        for (const inv of (existing.invoices || [])) {
+          if (inv.status === 'CANCELED') continue;
+          if (inv.title !== order.invoiceTitle) continue;
+          const invCents   = inv.payment_requests?.[0]?.computed_amount_money?.amount ?? null;
+          const orderCents = Math.round(order.total * 100);
+          if (invCents !== null && invCents !== orderCents) continue;
+          // Check clientId via order metadata; null = legacy invoice, treat as match
+          const orderClientId = await fetchOrderClientId(env, inv.order_id);
+          if (orderClientId !== null && orderClientId !== order.clientId) continue;
+          dupe = inv;
+          break;
+        }
+        if (dupe) {
+          results.push({
+            ...order, status: 'duplicate',
+            error: `Invoice "${order.invoiceTitle}" already exists in Square with the same total (${dupe.status.toLowerCase()})`,
+            existingInvoiceUrl: dupe.public_url || null,
+          });
+          continue;
+        }
+      } catch (checkErr) { console.warn('[dup-check]', checkErr.message); }
+
+      const sqLineItems = order.lineItems.map(li => ({
+        name: li.name, quantity: String(li.qty),
+        base_price_money: { amount: Math.round(li.unitPrice * 100), currency: 'USD' },
+      }));
+      const serviceCharges = order.deliveryFee > 0 ? [{
+        uid: 'delivery-fee', name: 'Below $50 Min Delivery Fee',
+        amount_money: { amount: Math.round(order.deliveryFee * 100), currency: 'USD' },
+        calculation_phase: 'SUBTOTAL_PHASE', taxable: false, scope: 'ORDER',
+      }] : [];
+
+      const orderData = await squareReq(env, 'POST', '/v2/orders', {
+        idempotency_key: `hrh-ord-${order.id}-${Date.now()}`,
+        order: {
+          location_id: env.SQUARE_LOCATION_ID,
+          customer_id: order.squareCustomerId,
+          line_items:  sqLineItems,
+          // Store clientId in order metadata (not customer-facing) so that
+          // restaurant-group siblings sharing a Square Customer ID can be
+          // disambiguated without polluting the customer-facing invoice message.
+          metadata:    { hrh_client_id: order.clientId },
+          ...(serviceCharges.length ? { service_charges: serviceCharges } : {}),
+        },
       });
-      html += `</div>`;
-    }
-    if (state.skipped.length) {
-      html += `<div class="mini-list" style="margin-top:8px">`;
-      state.skipped.forEach(s => {
-        html += `<div class="mini-card">
-          <div class="mini-card-name">${esc(s.customerName)} <span style="color:#9ca3af;font-size:12px;font-weight:400">— skipped</span></div>
-          <div class="mini-card-detail">${esc(s.reason)}</div>
-        </div>`;
+      const sqOrder = orderData.order;
+
+      const invoiceData = await squareReq(env, 'POST', '/v2/invoices', {
+        idempotency_key: `hrh-inv-${order.id}-${Date.now()}`,
+        invoice: {
+          order_id:          sqOrder.id,
+          location_id:       env.SQUARE_LOCATION_ID,
+          primary_recipient: { customer_id: order.squareCustomerId },
+          title:             order.invoiceTitle,
+          delivery_method:   'EMAIL',
+          payment_requests:  [{ request_type: 'BALANCE', due_date: dueDate }],
+          accepted_payment_methods: {
+            card: true, square_gift_card: false, bank_account: false,
+            buy_now_pay_later: false, cash_app_pay: false,
+          },
+        },
       });
-      html += `</div>`;
+      const sqInvoice = invoiceData.invoice;
+
+      results.push({
+        ...order, status: 'drafted',
+        squareOrderId:       sqOrder.id,
+        squareOrderVersion:  sqOrder.version,
+        squareInvoiceId:     sqInvoice.id,
+        squareInvoiceUrl:    sqInvoice.public_url,
+        squareInvoiceNumber: sqInvoice.invoice_number,
+        error: null,
+      });
+    } catch (e) {
+      results.push({ ...order, status: 'error', error: e.message });
     }
-    html += `</div>`; // close sec-body-upcoming
   }
 
-  // ── Section: Cancelled ──────────────────────────────────────────────────────
-  const cancelledOrders = allSorted.filter(isCancelledOrder);
-  if (cancelledOrders.length) {
-    html += `<div class="section-header" style="margin-top:32px" onclick="toggleSection('cancelled')">
-      <span class="section-chevron${isSectionCollapsed('cancelled') ? ' collapsed' : ''}" id="sec-chev-cancelled">▾</span>
-      <span class="section-label" style="color:#9ca3af">Cancelled</span>
-      <span class="section-count">${cancelledOrders.length} order${cancelledOrders.length !== 1 ? 's' : ''}</span>
-    </div>
-    <div class="section-body${isSectionCollapsed('cancelled') ? ' collapsed' : ''}" id="sec-body-cancelled">
-      <div class="mini-list">`;
-    cancelledOrders.forEach(o => {
-      const items = o.lineItems.map(li => `${li.qty}× ${esc(li.name)}`).join(', ');
-      html += `<div class="mini-card">
-        <div class="mini-card-name">${esc(o.customerName)} <span style="color:#dc2626;font-size:12px;font-weight:400">— customer cancelled</span></div>
-        <div class="mini-card-detail">$${o.total.toFixed(2)}</div>
-        ${items ? `<div class="mini-card-items">${items}</div>` : ''}
-      </div>`;
-    });
-    html += `</div></div>`; // close mini-list + sec-body-cancelled
+  return jsonRes({ orders: results });
+}
+
+async function handleSendInvoices(env, request) {
+  let body;
+  try { body = await request.json(); } catch { return errRes('Invalid JSON body'); }
+  const { orders } = body;
+  if (!Array.isArray(orders) || !orders.length) return errRes('orders array required');
+
+  const now = new Date();
+  const p   = n => String(n).padStart(2, '0');
+  const dt  = `${p(now.getMonth()+1)}/${p(now.getDate())}/${now.getFullYear()} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+
+  const results = [];
+
+  for (const order of orders) {
+    if (!order.squareOrderId || !order.squareInvoiceId) {
+      results.push({ ...order, status: 'error', error: 'Missing squareOrderId or squareInvoiceId' });
+      continue;
+    }
+    try {
+      // Fetch current invoice to get its exact version before publishing.
+      // Do NOT update order line items here — they were set correctly at draft creation time,
+      // and updating them would increment the invoice version causing publish to fail.
+      const invData       = await squareReq(env, 'GET', `/v2/invoices/${order.squareInvoiceId}`);
+      const invoiceVersion = invData.invoice?.version ?? 0;
+
+      const pubData  = await squareReq(env, 'POST', `/v2/invoices/${order.squareInvoiceId}/publish`, {
+        version: invoiceVersion, idempotency_key: `hrh-pub-${order.squareInvoiceId}-${Date.now()}`,
+      });
+      const published = pubData.invoice;
+
+      await appsheetEdit(env, 'order', [{
+        id: order.id, 'invoice_sent?': 'Sent', sent_datetime: dt, invoice_number: published.invoice_number || '',
+      }]);
+
+      results.push({ ...order, status: 'sent', sentAt: now.toISOString(), squareInvoiceNumber: published.invoice_number, error: null });
+    } catch (e) {
+      results.push({ ...order, status: 'error', error: e.message });
+    }
   }
 
-  stateOrders.innerHTML = html;
-  toolbar.style.display = '';
-  toolbar.dataset.loaded = '1';
-  updateToolbar();
+  return jsonRes({ orders: results });
 }
-function deselectAllSection(status) {
-  state.orders.filter(o => o.status === status).forEach(o => setChecked(o.id, false));
-  updateToolbar();
-}
-// ── Load orders ─────────────────────────────────────────────────────────────────
-document.getElementById('btnLoad').addEventListener('click', async () => {
-  if (!picker.value) { showToast('Pick a date first', 'red'); return; }
-  const date  = toDisplayFmt(picker.value);
-  const rules = getRules();
-  const params = new URLSearchParams({ date });
-  if (rules.skipHomeDelivery === false) params.set('skipHomeDelivery', '0');
-  if (rules.skipAlways       === false) params.set('skipAlways', '0');
-  if (rules.skipMonthEnd     === false) params.set('skipMonthEnd', '0');
-  if (rules.skipAlreadySent  === false) params.set('skipAlreadySent', '0');
-  if (rules.deliveryFee      === false) params.set('deliveryFee', '0');
-  if (monthEndMode) params.set('includeMonthEnd', '1');
-  stateEmpty.style.display   = 'none';
-  stateLoading.style.display = '';
-  stateOrders.style.display  = 'none';
-  toolbar.style.display      = 'none';
-  switchTab('orders');
-  try {
-    const res  = await fetch(`${WORKER_URL}/orders?${params}`);
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
-    const data = await res.json();
-    state.orders     = data.orders     || [];
-    state.notInToday = data.notInToday || [];
-    state.skipped    = data.skipped    || [];
-    applySquareIdOverrides(state.orders);
-    updateAddressBook(state.orders);
-    renderOrders();
-    showSardelliPOBanner();
-    setStatus('', '');
-    document.getElementById('btnRefresh').style.display = '';
-    const _now = new Date();
-    const _ts  = document.getElementById('lastRefreshTime');
-    _ts.style.display  = '';
-    _ts.textContent    = `Updated ${_now.toLocaleDateString([], {month:'short', day:'numeric'})} at ${_now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-    showToast(`Loaded ${state.orders.length} orders for ${date}${monthEndMode ? ' (month-end mode)' : ''}`, 'green');
-    runSquareCheck();
-  } catch (e) {
-    stateLoading.style.display = 'none';
-    stateEmpty.style.display   = '';
-    stateEmpty.querySelector('p').innerHTML = `<span style="color:#dc2626">Error: ${esc(e.message)}</span>`;
-    showToast('Failed to load orders', 'red');
+
+async function handleOutstanding(env) {
+  // Fetch all UNPAID and PARTIALLY_PAID invoices for this location
+  const allInvoices = [];
+  for (const status of ['UNPAID', 'PARTIALLY_PAID']) {
+    let cursor = null;
+    do {
+      const params = new URLSearchParams({ location_id: env.SQUARE_LOCATION_ID, limit: '200', status });
+      if (cursor) params.set('cursor', cursor);
+      const data = await squareReq(env, 'GET', `/v2/invoices?${params}`);
+      allInvoices.push(...(data.invoices || []));
+      cursor = data.cursor || null;
+    } while (cursor);
   }
-});
-// ── Phase 2: Square cross-reference ────────────────────────────────────────────
-async function runSquareCheck() {
-  const toCheck = state.orders.filter(o => o.squareCustomerId);
-  if (!toCheck.length) return;
+  allInvoices.sort((a, b) => {
+    const da = a.payment_requests?.[0]?.due_date || '';
+    const db = b.payment_requests?.[0]?.due_date || '';
+    return da.localeCompare(db);
+  });
+  return jsonRes({ invoices: allInvoices });
+}
+
+async function handleSquareCustomer(env, searchParams) {
+  const id = searchParams.get('id');
+  if (!id) return errRes('id param required');
   try {
-    const res = await fetch(`${WORKER_URL}/square-check`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // clientId disambiguates restaurant-group siblings sharing the same Square Customer ID
-      body: JSON.stringify({ orders: toCheck.map(o => ({
-        id: o.id, clientId: o.clientId, squareCustomerId: o.squareCustomerId, invoiceTitle: o.invoiceTitle
-      })) }),
+    const [custData, cardData] = await Promise.all([
+      squareReq(env, 'GET', `/v2/customers/${id}`),
+      squareReq(env, 'GET', `/v2/customers/${id}/cards`).catch(() => ({ cards: [] })),
+    ]);
+    const customer     = custData.customer || null;
+    const hasCardOnFile = (cardData.cards || []).some(c => !c.disabled);
+    return jsonRes({ customer, has_card_on_file: hasCardOnFile });
+  } catch (e) {
+    return errRes(`Square customer fetch failed: ${e.message}`, 500);
+  }
+}
+
+async function handleSquareSearch(env, searchParams) {
+  const name = (searchParams.get('name') || '').trim();
+  if (!name) return errRes('name param required');
+  try {
+    const data = await squareReq(env, 'POST', '/v2/customers/search', {
+      query: { text_filter: { fuzzy: name } },
+      limit: 10,
     });
-    if (!res.ok) return;
-    const { results } = await res.json();
-    if (!results) return;
-    let anyUpdate = false;
-    for (const order of state.orders) {
-      const r = results[order.id];
-      if (!r) continue;
-      if (r.status)              order.status              = r.status;
-      if (r.squareInvoiceId)     order.squareInvoiceId     = r.squareInvoiceId;
-      if (r.squareInvoiceUrl)    order.squareInvoiceUrl    = r.squareInvoiceUrl;
-      if (r.squareInvoiceNumber) order.squareInvoiceNumber = r.squareInvoiceNumber;
-      if (r.squareOrderId)       order.squareOrderId       = r.squareOrderId;
-      if (r.squareStatus)        order.squareStatus        = r.squareStatus;
-      if (r.customerEmail)       order.customerEmail       = r.customerEmail;
-      anyUpdate = true;
-    }
-    if (anyUpdate) {
-      renderOrders();
-      initSectionChevrons();
-      showSardelliPOBanner();
-      // Update address book with any invoice data found during the Square check
-      updateAddressBookWithInvoices(state.orders.filter(o => o.squareInvoiceNumber));
-    }
+    return jsonRes({ customers: data.customers || [] });
   } catch (e) {
-    console.warn('[square-check]', e.message);
+    return errRes(`Square customer search failed: ${e.message}`, 500);
   }
 }
-// ── Create Drafts ───────────────────────────────────────────────────────────────
-btnDraft.addEventListener('click', () => {
-  const sel = selectedOrders().filter(o => o.status === 'pending');
-  if (!sel.length) { showToast('No pending orders selected', ''); return; }
-  document.getElementById('modalDraftList').innerHTML = sel.map(o => `• ${esc(o.customerName)} — $${o.total.toFixed(2)}`).join('<br>');
-  openModal('modalDraft');
-});
-document.getElementById('btnConfirmDraft').addEventListener('click', async () => {
-  closeModal('modalDraft');
-  const sel = selectedOrders().filter(o => o.status === 'pending');
-  if (!sel.length) return;
-  setStatus(`Creating ${sel.length} draft${sel.length > 1 ? 's' : ''}…`, 'blue');
-  btnDraft.disabled = true;
+
+async function handleAppsheetUpdateClient(env, request) {
+  let body;
+  try { body = await request.json(); } catch { return errRes('Invalid JSON'); }
+  const { clientId, squareCustomerId, email } = body;
+  if (!clientId) return errRes('clientId required');
+  const row = { id: clientId };
+  if (squareCustomerId) row['reserve_3'] = squareCustomerId;
+  if (email)           row['email']      = email;
   try {
-    const res  = await fetch(`${WORKER_URL}/create-drafts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: sel }) });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
-    const data = await res.json();
-    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) state.orders[idx] = u; });
-    renderOrders();
-    const ok  = data.orders.filter(o => o.status === 'drafted').length;
-    const dup = data.orders.filter(o => o.status === 'duplicate').length;
-    const err = data.orders.filter(o => o.status === 'error').length;
-    setStatus('', '');
-    const msg = [ok ? `${ok} drafted` : '', dup ? `${dup} duplicate` : '', err ? `${err} error` : ''].filter(Boolean).join(', ');
-    showToast(msg || 'Done', err ? 'red' : 'green');
+    await appsheetEdit(env, 'client', [row]);
+    return jsonRes({ ok: true });
   } catch (e) {
-    setStatus('', '');
-    showToast('Draft creation failed: ' + e.message, 'red');
-  } finally {
-    btnDraft.disabled = false;
-    updateToolbar();
+    return errRes(`AppSheet client update failed: ${e.message}`, 500);
   }
-});
-// ── Send invoices ───────────────────────────────────────────────────────────────
-btnSend.addEventListener('click', () => {
-  const sel = selectedOrders().filter(o => o.status === 'drafted');
-  if (!sel.length) { showToast('No drafted invoices selected', ''); return; }
-  document.getElementById('modalSendList').innerHTML = sel.map(o => `• ${esc(o.customerName)} — $${o.total.toFixed(2)}`).join('<br>');
-  openModal('modalSend');
-});
-document.getElementById('btnConfirmSend').addEventListener('click', async () => {
-  closeModal('modalSend');
-  const sel = selectedOrders().filter(o => o.status === 'drafted');
-  if (!sel.length) return;
-  setStatus(`Sending ${sel.length} invoice${sel.length > 1 ? 's' : ''}…`, 'orange');
-  btnSend.disabled = true;
-  try {
-    const res  = await fetch(`${WORKER_URL}/send-invoices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: sel }) });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
-    const data = await res.json();
-    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) state.orders[idx] = u; });
-    renderOrders();
-    showSardelliPOBanner();
-    const sentOrders = data.orders.filter(o => o.status === 'sent');
-    const errOrders  = data.orders.filter(o => o.status === 'error');
-    const totalSent  = sentOrders.reduce((s, o) => s + o.total, 0);
-    if (sentOrders.length) updateAddressBookWithInvoices(sentOrders);
-    setStatus(errOrders.length === 0 ? 'All invoices sent ✓' : '', 'green');
-    updateToolbar();
-    const sentNow = new Date();
-    const sentTimeStr = sentNow.toLocaleDateString([], {month:'short', day:'numeric'}) + ' at ' + sentNow.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    document.getElementById('completeSummaryText').innerHTML =
-      `<strong>${sentOrders.length}</strong> invoice${sentOrders.length !== 1 ? 's' : ''} sent · Total: <strong>$${totalSent.toFixed(2)}</strong>` +
-      (errOrders.length ? ` · <span style="color:#dc2626">${errOrders.length} error${errOrders.length !== 1 ? 's' : ''}</span>` : '') +
-      `<br><span style="font-size:12px;color:#6b7280">Sent ${sentTimeStr}</span>`;
-    document.getElementById('completeList').innerHTML =
-      sentOrders.map(o => `<div class="complete-row">
-        <span>✓ ${esc(o.customerName)}</span>
-        <span style="display:flex;align-items:center;gap:8px">
-          <strong>$${o.total.toFixed(2)}</strong>
-          ${o.squareInvoiceUrl ? `<a href="${esc(o.squareInvoiceUrl)}" target="_blank" class="inv-link">INV #${esc(o.squareInvoiceNumber||'')}</a>` : ''}
-        </span>
-      </div>`).join('') +
-      errOrders.map(o => `<div class="complete-row" style="color:#dc2626"><span>⛔ ${esc(o.customerName)}</span><span style="font-size:12px">${esc(o.error||'')}</span></div>`).join('');
-    openModal('modalComplete');
-    showToast(`${sentOrders.length} sent!`, 'green');
-  } catch (e) {
-    setStatus('', '');
-    showToast('Send failed: ' + e.message, 'red');
-  } finally {
-    btnSend.disabled = false;
-    updateToolbar();
-  }
-});
-// ── Sardilli PO banner ──────────────────────────────────────────────────────────
-function showSardelliPOBanner() {
-  const sardilli = state.orders.find(o => o.customerName.toLowerCase().includes('sardilli'));
-  const banner = document.getElementById('sardelliPOBanner');
-  if (!banner) return;
-  if (!sardilli || sardilli.status === 'sent' || sardilli.status === 'drafted') { banner.style.display = 'none'; return; }
-  banner.style.display = '';
-  const saved = localStorage.getItem('sardilli-po-persistent') || localStorage.getItem('sardilli-po-session') || '';
-  const input = document.getElementById('sardelliPOInput');
-  if (input && saved) { input.value = saved; applySardelliPO(); }
-  else updateSardelliPreview(sardilli, saved);
 }
-function updateSardelliPreview(order, poNum) {
-  const preview = document.getElementById('sardelliPOPreview');
-  if (!preview || !order) return;
-  const baseDate = (order.invoiceTitle || '').split(' Invoice')[0];
-  preview.textContent = poNum
-    ? `Invoice title will be: "${baseDate} Invoice - PO #${poNum}"`
-    : 'Enter PO # to include it in the invoice title';
-}
-function applySardelliPO() {
-  const poNum = (document.getElementById('sardelliPOInput')?.value || '').trim();
-  localStorage.setItem('sardilli-po-session', poNum);
-  localStorage.setItem('sardilli-po-persistent', poNum);
-  const sardilli = state.orders.find(o => o.customerName.toLowerCase().includes('sardilli'));
-  if (!sardilli) return;
-  const baseDate = (sardilli.invoiceTitle || '').split(' - PO')[0].split(' Invoice')[0];
-  sardilli.invoiceTitle = poNum ? `${baseDate} Invoice - PO #${poNum}` : `${baseDate} Invoice`;
-  updateSardelliPreview(sardilli, poNum);
-  patchCard(sardilli);
-}
-// ── Retry error order ───────────────────────────────────────────────────────────
-async function retryOrder(orderId) {
-  const order = state.orders.find(o => o.id === orderId);
-  if (!order || order.status !== 'error') return;
-  order.status = 'pending';
-  order.error  = null;
-  renderOrders();
-  initSectionChevrons();
-  // Auto-select just this order
-  setChecked(orderId, true);
-  updateToolbar();
-  showToast(`${order.customerName} reset to pending — select and draft when ready`, '');
-}
-// ── Delivery fee toggle ──────────────────────────────────────────────────────────
-function toggleDeliveryFee(orderId) {
-  const order = state.orders.find(o => o.id === orderId);
-  if (!order) return;
-  if (order._origDeliveryFee === undefined) order._origDeliveryFee = order.deliveryFee;
-  order.deliveryFee = order.deliveryFee > 0 ? 0 : (order._origDeliveryFee > 0 ? order._origDeliveryFee : 5);
-  order.total = Math.round((order.subtotal + order.deliveryFee) * 100) / 100;
-  const hdrEl    = document.getElementById(`hdrTotal-${orderId}`);
-  const totEl    = document.getElementById(`tot-${orderId}`);
-  const dfeeEl   = document.getElementById(`dfee-${orderId}`);
-  const dfeeBtnEl = document.getElementById(`dfeebtn-${orderId}`);
-  if (hdrEl)    hdrEl.textContent    = `$${order.total.toFixed(2)}`;
-  if (totEl)    totEl.textContent    = `$${order.total.toFixed(2)}`;
-  if (dfeeEl)   dfeeEl.style.display = order.deliveryFee > 0 ? '' : 'none';
-  if (dfeeBtnEl) {
-    const adding = order.deliveryFee <= 0;
-    dfeeBtnEl.textContent = adding ? '＋ Add $5 fee' : '✕ Remove fee';
-    dfeeBtnEl.style.background   = adding ? '#16a34a' : '';
-    dfeeBtnEl.style.color        = adding ? '#fff'    : '';
-    dfeeBtnEl.style.borderColor  = adding ? '#16a34a' : '';
-    dfeeBtnEl.classList.toggle('btn-ghost', !adding);
-  }
-  updateToolbar();
-}
-// ── Init ─────────────────────────────────────────────────────────────────────────
-loadSettings();
-loadFeatures();
-loadRules();
-loadNotes();
-renderAddressBook();
-setTimeout(() => { document.getElementById("btnLoad").click(); }, 300);
-</script>
-</body>
-</html>
+
+export default {
+  async fetch(request, env) {
+    const { pathname, searchParams } = new URL(request.url);
+    const method = request.method;
+    if (method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+    try {
+      if (method === 'GET'  && pathname === '/orders')        return handleGetOrders(env, searchParams);
+      if (method === 'POST' && pathname === '/square-check')   return handleSquareCheck(env, request);
+      if (method === 'POST' && pathname === '/create-drafts') return handleCreateDrafts(env, request);
+      if (method === 'POST' && pathname === '/send-invoices') return handleSendInvoices(env, request);
+      if (method === 'GET'  && pathname === '/outstanding')   return handleOutstanding(env);
+      if (method === 'GET'  && pathname === '/square-customer')       return handleSquareCustomer(env, searchParams);
+      if (method === 'GET'  && pathname === '/square-search')         return handleSquareSearch(env, searchParams);
+      if (method === 'POST' && pathname === '/appsheet-update-client') return handleAppsheetUpdateClient(env, request);
+      return errRes('Not found', 404);
+    } catch (e) {
+      console.error('[HRH Worker]', e.message);
+      return errRes(`Server error: ${e.message}`, 500);
+    }
+  },
+};
