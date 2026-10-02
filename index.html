@@ -1541,17 +1541,31 @@ document.getElementById('btnConfirmDraft').addEventListener('click', async () =>
   closeModal('modalDraft');
   const sel = selectedOrders().filter(o => o.status === 'pending');
   if (!sel.length) return;
-  setStatus(`Creating ${sel.length} draft${sel.length > 1 ? 's' : ''}…`, 'blue');
   btnDraft.disabled = true;
+  // Send in batches of 12 (≤36 subrequests/batch, safely under Cloudflare's 50 limit)
+  const BATCH = 12;
+  const totalBatches = Math.ceil(sel.length / BATCH);
+  const allResults = [];
   try {
-    const res  = await fetch(`${WORKER_URL}/create-drafts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: sel }) });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
-    const data = await res.json();
-    data.orders.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) state.orders[idx] = u; });
+    for (let i = 0; i < sel.length; i += BATCH) {
+      const chunk = sel.slice(i, i + BATCH);
+      const batchNum = Math.floor(i / BATCH) + 1;
+      setStatus(totalBatches > 1
+        ? `Creating drafts (batch ${batchNum}/${totalBatches})…`
+        : `Creating ${sel.length} draft${sel.length > 1 ? 's' : ''}…`, 'blue');
+      const res = await fetch(`${WORKER_URL}/create-drafts`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders: chunk }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
+      const data = await res.json();
+      allResults.push(...data.orders);
+    }
+    allResults.forEach(u => { const idx = state.orders.findIndex(o => o.id === u.id); if (idx !== -1) state.orders[idx] = u; });
     renderOrders();
-    const ok  = data.orders.filter(o => o.status === 'drafted').length;
-    const dup = data.orders.filter(o => o.status === 'duplicate').length;
-    const err = data.orders.filter(o => o.status === 'error').length;
+    const ok  = allResults.filter(o => o.status === 'drafted').length;
+    const dup = allResults.filter(o => o.status === 'duplicate').length;
+    const err = allResults.filter(o => o.status === 'error').length;
     setStatus('', '');
     const msg = [ok ? `${ok} drafted` : '', dup ? `${dup} duplicate` : '', err ? `${err} error` : ''].filter(Boolean).join(', ');
     showToast(msg || 'Done', err ? 'red' : 'green');
