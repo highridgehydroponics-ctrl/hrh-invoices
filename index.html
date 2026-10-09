@@ -131,7 +131,9 @@
     .card-body { border-top: 1px solid #f3f4f6; }
     .card-body.closed { display: none; }
     .line-items { padding: 10px 14px; }
-    .line-item { display: grid; grid-template-columns: 3fr 80px 100px 90px; align-items: center; gap: 12px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f9fafb; }
+    .line-item { display: grid; grid-template-columns: 3fr 80px 100px 90px 28px; align-items: center; gap: 12px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f9fafb; }
+    .li-delete { background: none; border: none; cursor: pointer; color: #d1d5db; font-size: 16px; line-height: 1; padding: 0; text-align: center; transition: color .15s; }
+    .li-delete:hover { color: #dc2626; }
     .line-item:last-child { border-bottom: none; }
     .li-name  { color: #374151; font-weight: 500; }
     .li-qty, .li-price { border: 1px solid #e5e7eb; border-radius: 5px; padding: 3px 6px; font-size: 13px; width: 100%; text-align: right; background: #f9fafb; }
@@ -1180,17 +1182,22 @@ function renderRow(order) {
   // Order Fulfilled cell — only show if the order is actually sent/fulfilled
   const fulfilledCell = (isSent && order.fulfillmentDate) ? esc(order.fulfillmentDate) : '';
   // Line items for expanded detail
+  const canDeleteLines = isPending || isDrafted;
   const liRows = order.lineItems.map((li, i) => {
     const liStatus    = (li.status || '').toLowerCase();
     const isPackedOut = liStatus.includes('packed') || li.status === 'Y';
     const nameColor   = li.status ? (isPackedOut ? '#16a34a' : '#ea580c') : '';
     const nameStyle   = nameColor ? ` style="color:${nameColor};font-weight:600"` : '';
+    const deleteBtn   = canDeleteLines
+      ? `<button class="li-delete" title="Remove this line item from AppSheet" onclick="event.stopPropagation();deleteLineItem('${order.id}',${i})">×</button>`
+      : `<div></div>`;
     return `
     <div class="line-item">
       <div class="li-name"${nameStyle}>${esc(li.name)}</div>
       <input class="li-qty"   type="number" min="0" step="0.5"  id="qty-${order.id}-${i}"   value="${li.qty}"                  ${ro} oninput="recomputeCard('${order.id}')">
       <input class="li-price" type="number" min="0" step="0.01" id="price-${order.id}-${i}" value="${li.unitPrice.toFixed(2)}" ${ro} oninput="recomputeCard('${order.id}')">
       <div class="li-total" id="liTotal-${order.id}-${i}">$${li.total.toFixed(2)}</div>
+      ${deleteBtn}
     </div>`;
   }).join('');
   const hasDfee   = order.deliveryFee > 0;
@@ -1236,7 +1243,7 @@ function renderRow(order) {
         <div class="line-items" style="padding:10px 16px">
           ${invTitleLine ? `<div style="font-size:12px;color:#374151;padding:4px 0 6px">${invTitleLine}</div>` : ''}
           <div class="line-item" style="font-size:11px;font-weight:700;color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:4px">
-            <div>PRODUCT</div><div style="text-align:right">QTY</div><div style="text-align:right">UNIT $</div><div style="text-align:right">TOTAL</div>
+            <div>PRODUCT</div><div style="text-align:right">QTY</div><div style="text-align:right">UNIT $</div><div style="text-align:right">TOTAL</div><div></div>
           </div>
           ${liRows}
         </div>
@@ -1671,6 +1678,29 @@ async function retryOrder(orderId) {
   setChecked(orderId, true);
   updateToolbar();
   showToast(`${order.customerName} reset to pending — select and draft when ready`, '');
+}
+// ── Delete line item ─────────────────────────────────────────────────────────────
+async function deleteLineItem(orderId, lineIndex) {
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order) return;
+  const li = order.lineItems[lineIndex];
+  if (!li) return;
+  if (!confirm(`Remove "${li.name}" from this order?\n\nThis deletes it from AppSheet permanently.${order.status === 'drafted' ? '\n\nNote: the Square draft still contains this item — re-draft after deleting.' : ''}`)) return;
+  try {
+    const res = await fetch(`${WORKER_URL}/delete-line-item`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ detailRowNum: li.detailRowNum, detailId: li.detailId }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
+    // Remove from local state and recalculate totals
+    order.lineItems.splice(lineIndex, 1);
+    order.subtotal = Math.round(order.lineItems.reduce((s, l) => s + l.total, 0) * 100) / 100;
+    order.total    = Math.round((order.subtotal + order.deliveryFee) * 100) / 100;
+    renderOrders();
+    showToast(`"${li.name}" removed from ${order.customerName}`, 'green');
+  } catch (e) {
+    showToast('Delete failed: ' + e.message, 'red');
+  }
 }
 // ── Delivery fee toggle ──────────────────────────────────────────────────────────
 function toggleDeliveryFee(orderId) {
